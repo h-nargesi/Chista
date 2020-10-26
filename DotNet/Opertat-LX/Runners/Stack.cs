@@ -57,6 +57,7 @@ namespace Photon.NeuralNetwork.Opertat.Debug
             var init = new NeuralNetworkInitializer()
                 .SetInputSize(SIGNAL_COUNT_TOTAL);
 
+            // hard code layer size
             for (int i = 0; i < 3; i++)
                 init.AddLayer(relu, 100 - i * 10);
 
