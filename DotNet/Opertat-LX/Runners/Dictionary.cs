@@ -39,8 +39,8 @@ namespace Photon.NeuralNetwork.Opertat.Debug
                 init.AddLayer(relu, LAYER_COUBNT + 40 - (i + 1));
 
             init.AddLayer(new Sigmoind(), 40)
-                .SetCorrection(
-                    new Errorest(), new DataRange(128, -128), new DataRange(255, 0));
+                .SetCorrection(new Errorest())
+                .SetDataConvertor(new DataRange(128, -128), new DataRange(255, 0));
 
             return init.Image();
         }

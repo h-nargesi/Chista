@@ -55,6 +55,7 @@ namespace Photon.NeuralNetwork.Opertat.Debug
             if (rebuild == true) SetSetting(Setting.rebuild, false);
 
             Brain.LearningFactor = GetSetting(Setting.learning_factor, 0.1);
+            Brain.CertaintyFactor = GetSetting(Setting.certainty_factor, 0);
         }
         protected abstract NeuralNetworkImage BrainInitializer();
         protected override void OnError(Exception ex)

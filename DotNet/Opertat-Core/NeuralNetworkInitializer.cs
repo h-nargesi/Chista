@@ -94,7 +94,7 @@ namespace Photon.NeuralNetwork.Opertat
 
             return this;
         }
-        public NeuralNetworkInitializer SetDataConvert(
+        public NeuralNetworkInitializer SetDataConvertor(
             IDataConvertor input_convertot, IDataConvertor output_convertot)
         {
             if (layers == null)

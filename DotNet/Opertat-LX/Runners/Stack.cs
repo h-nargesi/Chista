@@ -58,12 +58,11 @@ namespace Photon.NeuralNetwork.Opertat.Debug
                 .SetInputSize(SIGNAL_COUNT_TOTAL);
 
             // hard code layer size
-            for (int i = 0; i < 3; i++)
-                init.AddLayer(relu, 100 - i * 10);
+            init.AddLayer(relu, 100, 100, 100);
 
             init.AddLayer(new Sigmoind(), RESULT_COUNT)
-                .SetCorrection(new ErrorStack(RESULT_COUNT),
-                    new DataRange(5, 0), new DataRange(10, 5));
+                .SetCorrection(new ErrorStack(RESULT_COUNT))
+                .SetDataConvertor(new DataRange(5, 0), new DataRange(10, 5));
 
             return init.Image();
         }

@@ -47,7 +47,8 @@ namespace Photon.NeuralNetwork.Opertat.Debug
                 .SetInputSize(int.Parse(lines[0]))
                 .AddLayer(new SoftReLU(), layers)
                 .AddLayer(new Sigmoind(), int.Parse(lines[^1]))
-                .SetCorrection(new Errorest(),
+                .SetCorrection(new Errorest())
+                .SetDataConvertor(
                     new DataRange(SignalRange, SignalHeight),
                     new DataRange(SignalRange * 2, SignalRange))
                 .Image();

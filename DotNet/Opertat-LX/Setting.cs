@@ -12,6 +12,7 @@ namespace Photon.NeuralNetwork.Opertat.Debug
         public const string data_provider = "data-provider";
         public const string current_offset = "current-offset";
         public const string learning_factor = "learning-factor";
+        public const string certainty_factor = "certainty-factor";
         public const string learning_epoch = "learning-epoch";
         public const string learning_tries = "learning-tries";
         public const string model_layers = "model-layers";
