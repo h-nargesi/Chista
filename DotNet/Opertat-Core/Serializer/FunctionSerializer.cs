@@ -75,7 +75,7 @@ namespace Photon.NeuralNetwork.Opertat.Implement
             else switch (regularization)
                 {
                     case RegularizationL2 _:
-                        code = 1;
+                        code = 2;
                         parameters = null;
                         break;
                     default:
@@ -139,7 +139,8 @@ namespace Photon.NeuralNetwork.Opertat.Implement
 
             switch (code)
             {
-                case 1: return new RegularizationL2();
+                case 0: return null;
+                case 2: return new RegularizationL2();
                 default:
                     throw new Exception(
                         $"this type of IRegularization ({code}) is not registered.");

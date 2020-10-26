@@ -62,11 +62,11 @@ namespace Photon.NeuralNetwork.Opertat
             // 3: read error function
             var error = function.RestoreIErrorFunction();
 
-            // 4: read data intput convertor
-            var input_convertor = function.RestoreIDataConvertor();
-
-            // 5: read regulazor function
+            // 4: read regulazor function
             var regulazation = function.RestoreIRegularization();
+
+            // 5: read data intput convertor
+            var input_convertor = function.RestoreIDataConvertor();
 
             // 6: read data output convertor
             var output_convertor = function.RestoreIDataConvertor();
