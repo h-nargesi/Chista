@@ -1,0 +1,7 @@
+dic pilot @dic-1 "Data Source=D:\data.sqlite"
+initialize
+wake-up
+
+serial pilot @sr "\\192.168.1.103\Developing\Neural Network\Data\mind\dic1.nnr"
+write root dic@dic-1
+no

@@ -1,0 +1,14 @@
+Seperate training data, validation data and test data (P2-M1-L1-S7,P2-M4-L2-S20)
+--------------------------------------------------------------------------------
+Complexity (Find the best neurons' architecte) (P7-M1-L3)
+Epoch (train until increasing errors of test set) (P7-M1-L3)
+Regularization (change error function. add L1 and L2) (P7-M1-L3)
+Dropout (turn off some nodes in each epoch) (P7-M1-L3)
+Random Restart (P7-M1-L3)
+Other Activation Function (Rectified Linear Unit) (P7-M1-L3)
+------------------------------------------------------------
+Inputs with zero mean and small equal variance (P2-M4-L2-S19,S23)
+Initial weights randomly with zero mean and small equal variance (P2-M4-L2-S19,S23)
+Stochastic Gradient Descent (SGD) (P2-M4-L2-S22)
+Momentum ... in SGD (P2-M4-L2-S23)
+Learning rate decay in SGD (P2-M4-L2-S23)

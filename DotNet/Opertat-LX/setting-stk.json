@@ -1,0 +1,8 @@
+{
+  "data-provider": "Data Source=RAIN;Initial Catalog=RahavardNovin3;Integrated Security=True;",
+  "barin-image": "stk.nni",
+  "learning-factor": 0.01,
+  "current-offset": 0,
+  "learning-epoch": 1024,
+  "learning-tries": 1
+}

@@ -1,0 +1,8 @@
+{
+  "model-layers": "2-10-5-3-1",
+  "barin-image": "adm.nni",
+  "learning-factor": 0.001,
+  "learning-epoch": 1024,
+  "learning-tries": 1,
+  "current-offset": 18362
+}

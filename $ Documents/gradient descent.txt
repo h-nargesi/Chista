@@ -1,0 +1,13 @@
+Error = ½ * (y - ŷ)²
+Δwi = -(∂Error / ∂wi)
+
+[output layer]
+e = (y - ŷ)
+δ = e * ƒ’(h)
+Δwi = η * δ * xi
+
+[hidden layer]
+(j=hidden layer, k=output layer)
+ej = (∑k δk * wjk)
+δj = ej * ƒ’(hj)
+Δwi = η * δ * xi

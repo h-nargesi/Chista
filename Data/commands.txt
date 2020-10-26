@@ -1,0 +1,8 @@
+dic pilot dic-1 "Data Source=/home/fairy/Developing/Neural Network/Data/dictionary/data.sqlite"
+initialize
+end
+
+serial pilot sr "/home/fairy/Developing/Neural Network/Data/mind/dic1.nnr"
+write dic@dic-1
+end
+no serial@sr

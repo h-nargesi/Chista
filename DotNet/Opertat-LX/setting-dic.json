@@ -1,0 +1,8 @@
+{
+  "barin-image": "dic1.nni",
+  "data-provider": "Data Source=/home/fairy/Developing/Opertat/Data/dictionary/data.sqlite",
+  "current-offset": 0,
+  "learning-factor": 0.01,
+  "learning-epoch": 1024,
+  "learning-tries": 1024
+}
