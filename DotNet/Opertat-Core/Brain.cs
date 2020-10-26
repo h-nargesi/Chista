@@ -34,7 +34,6 @@ namespace Photon.NeuralNetwork.Opertat
             regularization = image.regularization;
         }
 
-
         public NeuralNetworkImage Image()
         {
             // it's for multi-thread using
@@ -96,22 +95,8 @@ namespace Photon.NeuralNetwork.Opertat
             locker.AcquireReaderLock(lock_time_out);
             try
             {
-                var i = 0;
-                for (; i < layers.Length; i++)
-                {
-                    // store input for this layer
-                    flash.InputSignals[i] = signals;
-                    // multiply inputs and weights plus bias
-                    flash.SignalsSum[i] = layers[i].Synapse.Multiply(signals) + layers[i].Bias;
-                    // apply sigmoind function on results
-                    signals = layers[i].Conduction.Conduct(flash, i);
-#if NaN && DEBUG
-                    NanTest(signals);
-                    //flash.SignalsExtra[0][i]
-#endif
-                }
-                // store last output
-                flash.InputSignals[i] = signals;
+                // forward-propagation
+                ForwardPropagation(flash, ref signals);
             }
             finally { locker.ReleaseReaderLock(); }
 
@@ -140,32 +125,97 @@ namespace Photon.NeuralNetwork.Opertat
             locker.AcquireWriterLock(lock_time_out);
             try
             {
-                var i = layers.Length;
-                while (--i >= 0)
-                {
-                    // calculate next delta
-                    delta = delta.PointwiseMultiply(
-                        layers[i].Conduction.ConductDerivative(flash, i));
-
-                    // find out bias and weights differances
-                    var delta_bias = LearningFactor * delta;
-                    var delta_weight =
-                        Matrix<double>.Build.DenseOfColumnVectors(delta_bias) *
-                        Matrix<double>.Build.DenseOfRowVectors(flash.InputSignals[i]);
-
-                    // regularization
-                    if (CertaintyFactor > 0)
-                        delta_weight -= regularization?.Regularize(layers[i].Synapse, CertaintyFactor);
-
-                    // prepare delta for next loop (previous layer)
-                    delta = layers[i].Synapse.Transpose().Multiply(delta);
-
-                    // apply bias and weights differances
-                    layers[i].Bias += delta_bias;
-                    layers[i].Synapse += delta_weight;
-                }
+                // back-propagation
+                BackPropagation(flash, delta);
             }
             finally { locker.ReleaseWriterLock(); }
+        }
+        public NeuralNetworkFlash Train(double[] inputs, double[] values)
+        {
+            if (inputs == null)
+                throw new ArgumentNullException(nameof(inputs));
+            var signals = Vector<double>.Build.DenseOfArray(inputs);
+
+            // standardized signals
+            if (in_cvrt != null) signals = in_cvrt.Standardize(signals);
+            // prepare neural network flash
+            var flash = new NeuralNetworkFlash(layers.Length);
+
+            // pure data
+            var delta = Vector<double>.Build.DenseOfArray(values);
+            // standardized signals
+            if (out_cvrt != null) delta = out_cvrt.Standardize(delta);
+
+            // it's for multi-thread using
+            locker.AcquireWriterLock(lock_time_out);
+            try
+            {
+                // dropout
+                // use drop out *optional
+
+                // forward-propagation
+                ForwardPropagation(flash, ref signals);
+
+                // calculate error
+                delta = error_fnc.ErrorCalculation(flash.InputSignals[^1], delta);
+
+                // back-propagation
+                BackPropagation(flash, delta);
+            }
+            finally { locker.ReleaseWriterLock(); }
+
+            // normalaize result to return
+            if (out_cvrt != null) signals = out_cvrt.Normalize(signals);
+            // set result
+            flash.ResultSignals = signals.ToArray();
+
+            return flash;
+        }
+        private void ForwardPropagation(NeuralNetworkFlash flash, ref Vector<double> signals)
+        {
+            var i = 0;
+            for (; i < layers.Length; i++)
+            {
+                // store input for this layer
+                flash.InputSignals[i] = signals;
+                // multiply inputs and weights plus bias
+                flash.SignalsSum[i] = layers[i].Synapse.Multiply(signals) + layers[i].Bias;
+                // apply sigmoind function on results
+                signals = layers[i].Conduction.Conduct(flash, i);
+#if NaN && DEBUG
+                NanTest(signals);
+                //flash.SignalsExtra[0][i]
+#endif
+            }
+            // store last output
+            flash.InputSignals[i] = signals;
+        }
+        private void BackPropagation(NeuralNetworkFlash flash, Vector<double> delta)
+        {
+            var i = layers.Length;
+            while (--i >= 0)
+            {
+                // calculate next delta
+                delta = delta.PointwiseMultiply(
+                    layers[i].Conduction.ConductDerivative(flash, i));
+
+                // find out bias and weights differances
+                var delta_bias = LearningFactor * delta;
+                var delta_weight =
+                    Matrix<double>.Build.DenseOfColumnVectors(delta_bias) *
+                    Matrix<double>.Build.DenseOfRowVectors(flash.InputSignals[i]);
+
+                // regularization
+                if (CertaintyFactor > 0)
+                    delta_weight -= regularization?.Regularize(layers[i].Synapse, CertaintyFactor);
+
+                // prepare delta for next loop (previous layer)
+                delta = layers[i].Synapse.Transpose().Multiply(delta);
+
+                // apply bias and weights differances
+                layers[i].Bias += delta_bias;
+                layers[i].Synapse += delta_weight;
+            }
         }
 
         private Vector<double> Error(NeuralNetworkFlash flash, double[] values)

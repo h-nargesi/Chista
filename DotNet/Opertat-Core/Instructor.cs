@@ -68,10 +68,6 @@ namespace Photon.NeuralNetwork.Opertat
                                 Accuracy = (accuracy_total + accuracy_last) / (record_count + 1);
                                 if (error_sum == 0) break;
 
-                                // check result of 
-                                /*var correction = CheckResultValidation(predict, record);
-                                if (correction == null) break;*/
-
                                 // learning
                                 Brain.Reflect(predict, record.result);
 
