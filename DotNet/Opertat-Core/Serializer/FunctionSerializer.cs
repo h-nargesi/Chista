@@ -63,6 +63,29 @@ namespace Photon.NeuralNetwork.Opertat.Implement
             // serialaize type and parameters
             Serialize(code, parameters?.ToArray());
         }
+        public void Serialize(IRegularization regularization)
+        {
+            ushort code;
+            List<byte> parameters;
+            if (regularization == null)
+            {
+                code = 0;
+                parameters = null;
+            }
+            else switch (regularization)
+                {
+                    case RegularizationL2 _:
+                        code = 1;
+                        parameters = null;
+                        break;
+                    default:
+                        throw new ArgumentException(
+                            nameof(regularization), "this type of IRegularization is not registered.");
+                }
+
+            // serialaize type and parameters
+            Serialize(code, parameters?.ToArray());
+        }
         private void Serialize(ushort code, byte[] parameters)
         {
             // serialaize type
@@ -76,7 +99,7 @@ namespace Photon.NeuralNetwork.Opertat.Implement
             stream.Write(parameters, 0, parameters.Length);
         }
 
-        public IErrorFunction RestorIErrorFunction()
+        public IErrorFunction RestoreIErrorFunction()
         {
             byte[] buffer;
             var code = RestorFunctionType();
@@ -92,7 +115,7 @@ namespace Photon.NeuralNetwork.Opertat.Implement
                         $"this type of IErrorFunction ({code}) is not registered.");
             }
         }
-        public IDataConvertor RestorIDataConvertor()
+        public IDataConvertor RestoreIDataConvertor()
         {
             byte[] buffer;
             var code = RestorFunctionType();
@@ -108,6 +131,18 @@ namespace Photon.NeuralNetwork.Opertat.Implement
                 default:
                     throw new Exception(
                         $"This type of IDataConvertor ({code}) is not registered.");
+            }
+        }
+        public IRegularization RestoreIRegularization()
+        {
+            var code = RestorFunctionType();
+
+            switch (code)
+            {
+                case 1: return new RegularizationL2();
+                default:
+                    throw new Exception(
+                        $"this type of IRegularization ({code}) is not registered.");
             }
         }
         private ushort RestorFunctionType()

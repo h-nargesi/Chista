@@ -12,16 +12,19 @@ namespace Photon.NeuralNetwork.Opertat
         public readonly Layer[] layers;
         public readonly IErrorFunction error_fnc;
         public readonly IDataConvertor input_convertor, output_convertor;
+        public readonly IRegularization regularization;
 
         public NeuralNetworkImage(
             Layer[] layers, IErrorFunction error_fnc,
-            IDataConvertor input_convertor, IDataConvertor output_convertor)
+            IDataConvertor input_convertor, IDataConvertor output_convertor,
+            IRegularization regularization)
         {
             CheckImageError(layers, error_fnc);
             this.layers = layers;
             this.error_fnc = error_fnc;
             this.input_convertor = input_convertor;
             this.output_convertor = output_convertor;
+            this.regularization = regularization;
         }
 
         public static void CheckImageError(Layer[] layers, IErrorFunction error_fnc)

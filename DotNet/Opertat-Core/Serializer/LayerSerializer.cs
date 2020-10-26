@@ -7,12 +7,18 @@ namespace Photon.NeuralNetwork.Opertat
 {
     static class LayerSerializer
     {
+        public const ushort VERSION = 2;
+
         public static void Serialize(FileStream stream, Layer[] layers)
         {
             if (stream == null)
                 throw new ArgumentNullException(nameof(stream), "The writer stream is not defined");
 
             byte[] buffer;
+
+            // serialize version
+            buffer = BitConverter.GetBytes(VERSION); // 2-bytes
+            stream.Write(buffer, 0, buffer.Length);
 
             // serialize leyar count
             buffer = BitConverter.GetBytes(layers.Length + 1); // 4-bytes
@@ -46,18 +52,24 @@ namespace Photon.NeuralNetwork.Opertat
                 }
         }
 
-        public static Layer[] Restore(FileStream stream, ushort version)
+        public static Layer[] Restore(FileStream stream)
         {
             if (stream == null)
                 throw new ArgumentNullException(nameof(stream), "The writer stream is not defined");
 
+            // 1: read version: 2-bytes
+            var buffer = new byte[2];
+            stream.Read(buffer, 0, buffer.Length);
+            var version = BitConverter.ToUInt16(buffer, 0);
+
             return version switch
             {
-                NeuralNetworkSerializer.VERSION => Restore(stream),
+                1 => throw new Exception("The 1st version of nni is not supported any more."),
+                VERSION => RestoreLastVersion(stream),
                 _ => throw new Exception("This version of nni is not supported"),
             };
         }
-        private static Layer[] Restore(FileStream stream)
+        private static Layer[] RestoreLastVersion(FileStream stream)
         {
             var buffer_short = new byte[2];
             var buffer_int = new byte[4];

@@ -15,7 +15,9 @@ namespace Photon.NeuralNetwork.Opertat
         private readonly Layer[] layers;
         private readonly IErrorFunction error_fnc;
         private readonly IDataConvertor in_cvrt, out_cvrt;
+        private readonly IRegularization regularization;
         public double LearningFactor { get; set; } = 1;
+        public double CertaintyFactor { get; set; } = 0;
 
         public Brain(NeuralNetworkImage image)
         {
@@ -29,6 +31,7 @@ namespace Photon.NeuralNetwork.Opertat
             error_fnc = image.error_fnc;
             in_cvrt = image.input_convertor;
             out_cvrt = image.output_convertor;
+            regularization = image.regularization;
         }
 
 
@@ -44,7 +47,7 @@ namespace Photon.NeuralNetwork.Opertat
                     clone[l] = layers[l].Clone();
 
                 return new NeuralNetworkImage(
-                    clone, error_fnc, in_cvrt, out_cvrt);
+                    clone, error_fnc, in_cvrt, out_cvrt, regularization);
             }
             // release the lock
             finally { locker.ReleaseReaderLock(); }
@@ -151,8 +154,8 @@ namespace Photon.NeuralNetwork.Opertat
                         Matrix<double>.Build.DenseOfRowVectors(flash.InputSignals[i]);
 
                     // regularization
-                    // if (CertaintyFactor > 0)
-                    //    delta_weight -= Regularize(i);
+                    if (CertaintyFactor > 0)
+                        delta_weight -= regularization?.Regularize(layers[i].Synapse, CertaintyFactor);
 
                     // prepare delta for next loop (previous layer)
                     delta = layers[i].Synapse.Transpose().Multiply(delta);

@@ -6,7 +6,7 @@ namespace Photon.NeuralNetwork.Opertat
 {
     public class NeuralNetworkSerializer
     {
-        public const ushort VERSION = 2;
+        public const ushort VERSION = 3;
         public static void Serialize(NeuralNetworkImage image, string path)
         {
             using var stream = File.Create(path);
@@ -25,10 +25,13 @@ namespace Photon.NeuralNetwork.Opertat
             // 3: serialize error function
             function.Serialize(image.error_fnc);
 
-            // 4: serialize data input convertor
+            // 4: serialize regularization function
+            function.Serialize(image.regularization);
+
+            // 5: serialize data input convertor
             function.Serialize(image.input_convertor);
 
-            // 5: serialize data output convertor
+            // 6: serialize data output convertor
             function.Serialize(image.output_convertor);
         }
         public static NeuralNetworkImage Restore(string path)
@@ -39,34 +42,57 @@ namespace Photon.NeuralNetwork.Opertat
             var buffer = new byte[2];
             stream.Read(buffer, 0, buffer.Length);
             var version = BitConverter.ToUInt16(buffer, 0);
-            CheckVersion(version);
 
+            return version switch
+            {
+                1 => throw new Exception("The 1st version of nni is not supported any more."),
+                2 => RestoreVer2(stream),
+                VERSION => RestoreLastVersion(stream),
+                _ => throw new Exception("This version of nni is not supported."),
+            };
+        }
+        private static NeuralNetworkImage RestoreLastVersion(FileStream stream)
+        {
             // 2: read all layers
-            var layers = LayerSerializer.Restore(stream, version);
+            var layers = LayerSerializer.Restore(stream);
 
             // functions serializer
             var function = new FunctionSerializer(stream);
 
             // 3: read error function
-            var error = function.RestorIErrorFunction();
+            var error = function.RestoreIErrorFunction();
 
             // 4: read data intput convertor
-            var input_convertor = function.RestorIDataConvertor();
+            var input_convertor = function.RestoreIDataConvertor();
+
+            // 5: read regulazor function
+            var regulazation = function.RestoreIRegularization();
+
+            // 6: read data output convertor
+            var output_convertor = function.RestoreIDataConvertor();
+
+            return new NeuralNetworkImage(layers, error, input_convertor, output_convertor, regulazation);
+        }
+        private static NeuralNetworkImage RestoreVer2(FileStream stream)
+        {
+            // 2: read all layers
+            var layers = LayerSerializer.Restore(stream);
+
+            // functions serializer
+            var function = new FunctionSerializer(stream);
+
+            // 3: read error function
+            var error = function.RestoreIErrorFunction();
+
+            // regulazation not supported in this version
+
+            // 4: read data intput convertor
+            var input_convertor = function.RestoreIDataConvertor();
 
             // 5: read data output convertor
-            var output_convertor = function.RestorIDataConvertor();
+            var output_convertor = function.RestoreIDataConvertor();
 
-            return new NeuralNetworkImage(layers, error, input_convertor, output_convertor);
-        }
-        private static void CheckVersion(ushort version)
-        {
-            switch (version)
-            {
-                case VERSION:
-                    return;
-                default:
-                    throw new Exception("This version of nni is not supported");
-            }
+            return new NeuralNetworkImage(layers, error, input_convertor, output_convertor, null);
         }
 
     }

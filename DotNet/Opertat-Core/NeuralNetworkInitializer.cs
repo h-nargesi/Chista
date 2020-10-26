@@ -13,6 +13,7 @@ namespace Photon.NeuralNetwork.Opertat
         private LinkedList<Layer> layers;
         private IErrorFunction error_func;
         private IDataConvertor in_cvrt, out_cvrt;
+        private IRegularization regularization;
 
         private bool absolut_value = false;
         private IContinuousDistribution distribution = new Normal(0, 0.5);
@@ -42,6 +43,7 @@ namespace Photon.NeuralNetwork.Opertat
         {
             if (layers == null)
                 throw new Exception("The layers input is not set yet.");
+
             if (last_layer_input_count < 0)
                 throw new Exception("The layers are closed.");
 
@@ -75,9 +77,7 @@ namespace Photon.NeuralNetwork.Opertat
             return this;
         }
         public NeuralNetworkInitializer SetCorrection(
-            IErrorFunction error_func,
-            IDataConvertor input_convertot = null,
-            IDataConvertor output_convertot = null)
+            IErrorFunction error_func, IRegularization regularization = null)
         {
             if (layers == null)
                 throw new Exception("The layers input is not set yet.");
@@ -90,6 +90,22 @@ namespace Photon.NeuralNetwork.Opertat
                     "The error function is undefined.");
 
             last_layer_input_count = -1;
+            this.regularization = regularization;
+
+            return this;
+        }
+        public NeuralNetworkInitializer SetDataConvert(
+            IDataConvertor input_convertot, IDataConvertor output_convertot)
+        {
+            if (layers == null)
+                throw new Exception("The layers input is not set yet.");
+
+            if (layers.Count < 1)
+                throw new Exception("The layers output is not set yet.");
+
+            if (last_layer_input_count > -1)
+                throw new Exception("The layers are not closed.");
+
             in_cvrt = input_convertot;
             out_cvrt = output_convertot;
 
@@ -98,7 +114,8 @@ namespace Photon.NeuralNetwork.Opertat
 
         public NeuralNetworkImage Image()
         {
-            return new NeuralNetworkImage(layers.ToArray(), error_func, in_cvrt, out_cvrt);
+            return new NeuralNetworkImage(layers.ToArray(),
+                error_func, in_cvrt, out_cvrt, regularization);
         }
     }
 }

@@ -7,11 +7,6 @@ namespace Photon.NeuralNetwork.Opertat
     public class SoftReLU : IConduction
     {
         public int ExtraCount => 2;
-        public double CertaintyFactor { get; set; }
-        public Matrix<double> Regularize(Matrix<double> synapse)
-        {
-            return synapse * 0;
-        }
         public Vector<double> Conduct(Vector<double> signal)
         {
             return (signal.PointwiseExp() + 1).PointwiseLog();
