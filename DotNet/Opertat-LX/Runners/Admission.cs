@@ -38,7 +38,7 @@ namespace Photon.NeuralNetwork.Opertat.Debug
         }
         protected override NeuralNetworkImage BrainInitializer()
         {
-            var model = GetSetting(Setting.model_layers, "2-2-1");
+            var model = GetSetting(Setting.model_layers, "2-10-10-1");
             var lines = model.Split('-');
             var layers = new int[lines.Length - 2];
             for (int i = 0; i < layers.Length; i++) layers[i] = int.Parse(lines[i + 1]);
