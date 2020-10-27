@@ -117,5 +117,14 @@ namespace Photon.NeuralNetwork.Opertat
             return new NeuralNetworkImage(layers.ToArray(),
                 error_func, in_cvrt, out_cvrt, regularization);
         }
+        public Brain Brain(double learning, double certainty, double dropout)
+        {
+            return new Brain(Image())
+            {
+                LearningFactor = learning,
+                CertaintyFactor = certainty,
+                DropoutFactor = dropout
+            };
+        }
     }
 }

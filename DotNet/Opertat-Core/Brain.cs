@@ -16,8 +16,10 @@ namespace Photon.NeuralNetwork.Opertat
         private readonly IErrorFunction error_fnc;
         private readonly IDataConvertor in_cvrt, out_cvrt;
         private readonly IRegularization regularization;
+
         public double LearningFactor { get; set; } = 1;
-        public double CertaintyFactor { get; set; } = 0;
+        public double CertaintyFactor { get; set; } = 0.001;
+        public double DropoutFactor { get; set; } = 0.5;
 
         public Brain(NeuralNetworkImage image)
         {
@@ -27,7 +29,10 @@ namespace Photon.NeuralNetwork.Opertat
 
             NeuralNetworkImage.CheckImageError(image.layers, image.error_fnc);
 
-            layers = image.layers;
+            layers = new Layer[layers.Length];
+            for (int l = 0; l < layers.Length; l++)
+                layers[l] = image.layers[l].Clone();
+            
             error_fnc = image.error_fnc;
             in_cvrt = image.input_convertor;
             out_cvrt = image.output_convertor;
@@ -147,11 +152,12 @@ namespace Photon.NeuralNetwork.Opertat
             if (out_cvrt != null) delta = out_cvrt.Standardize(delta);
 
             // it's for multi-thread using
+            double lr = LearningFactor;
             locker.AcquireWriterLock(lock_time_out);
             try
             {
                 // dropout
-                // use drop out *optional
+                if (DropoutFactor > 0) Dropout();
 
                 // forward-propagation
                 ForwardPropagation(flash, ref signals);
@@ -160,9 +166,14 @@ namespace Photon.NeuralNetwork.Opertat
                 delta = error_fnc.ErrorCalculation(flash.InputSignals[^1], delta);
 
                 // back-propagation
+                LearningFactor /= DropoutFactor;
                 BackPropagation(flash, delta);
             }
-            finally { locker.ReleaseWriterLock(); }
+            finally
+            {
+                locker.ReleaseWriterLock();
+                LearningFactor = lr;
+            }
 
             // normalaize result to return
             if (out_cvrt != null) signals = out_cvrt.Normalize(signals);
@@ -170,6 +181,12 @@ namespace Photon.NeuralNetwork.Opertat
             flash.ResultSignals = signals.ToArray();
 
             return flash;
+        }
+        private void Dropout()
+        {
+            var nodes = new HashSet<int>();
+            foreach (var layer in layers)
+                layer.Droupout(DropoutFactor, ref nodes);
         }
         private void ForwardPropagation(NeuralNetworkFlash flash, ref Vector<double> signals)
         {
