@@ -9,6 +9,7 @@ using System.Globalization;
 using System.Threading;
 using Newtonsoft.Json.Linq;
 using System.Text.RegularExpressions;
+using Photon.NeuralNetwork.Opertat.Implement;
 
 namespace Photon.NeuralNetwork.Opertat.Debug
 {
@@ -57,18 +58,19 @@ namespace Photon.NeuralNetwork.Opertat.Debug
         }
         protected override NeuralNetworkImage BrainInitializer()
         {
-            var relu = new ReLU();
-            var init = new NeuralNetworkInitializer()
-                .SetInputSize(SIGNAL_COUNT_TOTAL);
+            var conduction = GetSetting(Setting.model_conduction, "soft-relu");
+            var model = GetSetting(Setting.model_layers, "100-100");
+            var lines = model.Split('-');
+            var layers = new int[lines.Length];
+            for (int i = 0; i < layers.Length; i++) layers[i] = int.Parse(lines[i]);
 
-            // hard code layer size
-            init.AddLayer(relu, 100, 100, 100);
-
-            init.AddLayer(new Sigmoind(), RESULT_COUNT)
+            return new NeuralNetworkInitializer()
+                .SetInputSize(SIGNAL_COUNT_TOTAL)
+                .AddLayer(conduction == "soft-relu" ? (IConduction)new SoftReLU() : new ReLU(), layers)
+                .AddLayer(new Sigmoind(), RESULT_COUNT)
                 .SetCorrection(new ErrorStack(RESULT_COUNT))
-                .SetDataConvertor(new DataRange(5, 0), new DataRange(10, 5));
-
-            return init.Image();
+                .SetDataConvertor(new DataRange(5, 0), new DataRange(10, 5))
+                .Image();
         }
         protected override Task<Record> PrepareNextData(uint offset)
         {
