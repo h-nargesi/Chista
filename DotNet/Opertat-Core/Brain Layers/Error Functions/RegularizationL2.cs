@@ -12,5 +12,10 @@ namespace Photon.NeuralNetwork.Opertat
         {
             return synapse * certainty;
         }
+
+        public override string ToString()
+        {
+            return "L2";
+        }
     }
 }

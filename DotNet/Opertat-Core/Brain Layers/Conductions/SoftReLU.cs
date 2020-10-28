@@ -24,5 +24,10 @@ namespace Photon.NeuralNetwork.Opertat
 
         private const int EXP = 0;
         private const int EXP_1 = 1;
+
+        public override string ToString()
+        {
+            return "SoftReLU";
+        }
     }
 }

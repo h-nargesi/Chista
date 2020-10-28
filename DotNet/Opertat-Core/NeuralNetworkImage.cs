@@ -64,5 +64,40 @@ namespace Photon.NeuralNetwork.Opertat
                 throw new ArgumentException(nameof(layers), messages);
         }
 
+        public string PrintInfo()
+        {
+            var buffer = new StringBuilder();
+
+            if (input_convertor != null)
+                buffer.Append("\n")
+                    .Append("input data convertor: ").Append(input_convertor.ToString());
+
+            if (layers != null)
+            {
+                buffer.Append("\n").Append("layers: ").Append(layers.Length);
+                if (layers.Length > 0)
+                {
+                    buffer.Append("\tinput: ").Append(layers[0].Synapse.RowCount).Append(" node(s)");
+                    foreach (var l in layers)
+                        buffer.Append("\tlayer: ")
+                            .Append(l.Synapse.RowCount).Append(" node(s)")
+                            .Append(" func=").Append(l.Conduction.ToString());
+                }
+            }
+
+            if (output_convertor != null)
+                buffer.Append("\n")
+                    .Append("output data convertor: ").Append(output_convertor.ToString());
+
+            if (error_fnc != null)
+                buffer.Append("\n")
+                    .Append("error function: ").Append(error_fnc.ToString());
+
+            if (regularization != null)
+                buffer.Append("\n")
+                    .Append("regularization: ").Append(regularization.ToString());
+
+            return buffer.ToString();
+        }
     }
 }

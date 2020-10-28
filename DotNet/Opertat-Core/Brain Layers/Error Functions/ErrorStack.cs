@@ -30,5 +30,10 @@ namespace Photon.NeuralNetwork.Opertat
         {
             return indexed.PointwiseMultiply(values - output);
         }
+
+        public override string ToString()
+        {
+            return "ErrorStack";
+        }
     }
 }

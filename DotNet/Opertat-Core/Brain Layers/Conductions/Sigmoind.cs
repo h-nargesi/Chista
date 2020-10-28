@@ -20,5 +20,10 @@ namespace Photon.NeuralNetwork.Opertat
             return flash.InputSignals[layer + 1]
                 .PointwiseMultiply(1 - flash.InputSignals[layer + 1]);
         }
+
+        public override string ToString()
+        {
+            return "Sigmoind";
+        }
     }
 }

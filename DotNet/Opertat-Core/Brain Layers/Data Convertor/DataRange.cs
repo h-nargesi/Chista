@@ -31,5 +31,10 @@ namespace Photon.NeuralNetwork.Opertat
             if (SignalHeight != 0) values -= SignalHeight;
             return values;
         }
+
+        public override string ToString()
+        {
+            return $"f(data) = (data + {SignalHeight}) / {SignalRange}";
+        }
     }
 }

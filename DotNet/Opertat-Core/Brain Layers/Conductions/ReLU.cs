@@ -19,5 +19,10 @@ namespace Photon.NeuralNetwork.Opertat
         {
             return flash.InputSignals[layer + 1].PointwiseSign();
         }
+
+        public override string ToString()
+        {
+            return "ReLU";
+        }
     }
 }

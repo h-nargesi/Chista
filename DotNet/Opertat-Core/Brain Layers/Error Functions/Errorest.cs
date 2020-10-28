@@ -12,5 +12,10 @@ namespace Photon.NeuralNetwork.Opertat
             // error equals to: (true_value - network_output)
             return values - output;
         }
+
+        public override string ToString()
+        {
+            return "Errorest";
+        }
     }
 }
