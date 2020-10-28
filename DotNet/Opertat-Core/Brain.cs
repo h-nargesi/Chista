@@ -172,7 +172,7 @@ namespace Photon.NeuralNetwork.Opertat
                 delta = error_fnc.ErrorCalculation(flash.InputSignals[^1], delta);
 
                 // back-propagation
-                LearningFactor /= DropoutFactor;
+                if (DropoutFactor > 0) LearningFactor /= DropoutFactor;
                 BackPropagation(flash, delta);
             }
             finally
