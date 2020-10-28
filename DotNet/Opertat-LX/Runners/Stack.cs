@@ -1,5 +1,6 @@
 using System;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Data;
 using System.Data.SqlClient;
 using System.Threading.Tasks;
@@ -8,8 +9,8 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Threading;
 using Newtonsoft.Json.Linq;
-using System.Text.RegularExpressions;
 using Photon.NeuralNetwork.Opertat.Implement;
+using Photon.NeuralNetwork.Opertat.Debug.Config;
 
 namespace Photon.NeuralNetwork.Opertat.Debug
 {
@@ -35,7 +36,7 @@ namespace Photon.NeuralNetwork.Opertat.Debug
                 sqlite = new SqlCommand
                 {
                     Connection =
-                        new SqlConnection(GetSetting(Setting.data_provider, ""))
+                        new SqlConnection(setting.GetSetting(Setting.data_provider, ""))
                 };
                 sqlite.Connection.Open();
 
@@ -58,11 +59,9 @@ namespace Photon.NeuralNetwork.Opertat.Debug
         }
         protected override NeuralNetworkImage BrainInitializer()
         {
-            var conduction = GetSetting(Setting.model_conduction, "soft-relu");
-            var model = GetSetting(Setting.model_layers, "100-100");
-            var lines = model.Split('-');
-            var layers = new int[lines.Length];
-            for (int i = 0; i < layers.Length; i++) layers[i] = int.Parse(lines[i]);
+            var model_info = setting[Setting.model, null];
+            var conduction = model_info.GetSetting(Setting.model_conduction, "soft-relu");
+            var layers = model_info.GetSettingArray(Setting.model_layers, 100, 100);
 
             return new NeuralNetworkInitializer()
                 .SetInputSize(SIGNAL_COUNT_TOTAL)

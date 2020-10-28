@@ -5,6 +5,8 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using MathNet.Numerics.LinearAlgebra;
+using Photon.NeuralNetwork.Opertat.Implement;
+using Photon.NeuralNetwork.Opertat.Debug.Config;
 
 namespace Photon.NeuralNetwork.Opertat.Debug
 {
@@ -38,15 +40,14 @@ namespace Photon.NeuralNetwork.Opertat.Debug
         }
         protected override NeuralNetworkImage BrainInitializer()
         {
-            var model = GetSetting(Setting.model_layers, "2-10-10-1");
-            var lines = model.Split('-');
-            var layers = new int[lines.Length - 2];
-            for (int i = 0; i < layers.Length; i++) layers[i] = int.Parse(lines[i + 1]);
+            var model_info = setting[Setting.model, null];
+            var conduction = model_info.GetSetting(Setting.model_conduction, "soft-relu");
+            var layers = model_info.GetSettingArray(Setting.model_layers, 10, 10);
 
             var image = new NeuralNetworkInitializer()
-                .SetInputSize(int.Parse(lines[0]))
-                .AddLayer(new SoftReLU(), layers)
-                .AddLayer(new Sigmoind(), int.Parse(lines[^1]))
+                .SetInputSize(2)
+                .AddLayer(conduction == "soft-relu" ? (IConduction)new SoftReLU() : new ReLU(), layers)
+                .AddLayer(new Sigmoind(), 1)
                 .SetCorrection(new Errorest())
                 .SetDataConvertor(
                     new DataRange(SignalRange, SignalHeight),

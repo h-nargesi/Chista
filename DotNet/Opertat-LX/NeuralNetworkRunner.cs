@@ -3,20 +3,18 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
 using System.IO;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
+using Photon.NeuralNetwork.Opertat.Debug.Config;
 
 namespace Photon.NeuralNetwork.Opertat.Debug
 {
     public abstract class NeuralNetworkRunner : Instructor, IDisposable
     {
-        protected readonly JObject setting;
+        protected readonly ConfigHandler setting;
         public NeuralNetworkRunner()
         {
-            setting = Setting.Read($"setting-{Name}.json");
+            setting = new ConfigHandler(Setting.Read($"setting-{Name}.json"));
         }
 
         public new void Start()
@@ -34,12 +32,12 @@ namespace Photon.NeuralNetwork.Opertat.Debug
             Thread.CurrentThread.CurrentCulture = ci;
             Thread.CurrentThread.CurrentUICulture = ci;
 
-            Offset = GetSetting<uint>(Setting.current_offset, 0);
-            Epoch = GetSetting<uint>(Setting.learning_epoch, 1024);
-            Tries = GetSetting<uint>(Setting.learning_tries, 1);
+            Offset = setting.GetSetting<uint>(Setting.current_offset, 0);
+            Epoch = setting.GetSetting<uint>(Setting.learning_epoch, 1024);
+            Tries = setting.GetSetting<uint>(Setting.learning_tries, 1);
 
-            bool? rebuild = GetSetting<bool>(Setting.rebuild);
-            string barin_image = GetSetting(Setting.barin_image, $"{Name}.nni");
+            bool? rebuild = setting.GetSetting<bool>(Setting.rebuild);
+            string barin_image = setting.GetSetting(Setting.barin_image, $"{Name}.nni");
             if (File.Exists(barin_image) && rebuild != true)
             {
                 Debugger.Console.WriteCommitLine("loading brain ... ");
@@ -52,11 +50,11 @@ namespace Photon.NeuralNetwork.Opertat.Debug
                 Brain = new Brain(BrainInitializer());
             }
 
-            if (rebuild == true) SetSetting(Setting.rebuild, false);
+            if (rebuild == true) setting.SetSetting(Setting.rebuild, false);
 
-            Brain.LearningFactor = GetSetting(Setting.learning_factor, 0.1);
-            Brain.CertaintyFactor = GetSetting(Setting.certainty_factor, 0.001);
-            Brain.DropoutFactor = GetSetting(Setting.dropout_factor, 0.2);
+            Brain.LearningFactor = setting.GetSetting(Setting.learning_factor, 0.1);
+            Brain.CertaintyFactor = setting.GetSetting(Setting.certainty_factor, 0.001);
+            Brain.DropoutFactor = setting.GetSetting(Setting.dropout_factor, 0.2);
         }
         protected abstract NeuralNetworkImage BrainInitializer();
         protected override void OnError(Exception ex)
@@ -77,15 +75,15 @@ namespace Photon.NeuralNetwork.Opertat.Debug
             Debugger.Console.CommitLine();
             Debugger.Console.WriteCommitLine("finishing ... ");
 
-            SetSetting(Setting.current_offset, Offset);
+            setting.SetSetting(Setting.current_offset, Offset);
 
             Debugger.Console.WriteCommitLine("storing brain's image ... ");
             NeuralNetworkSerializer.Serialize(
                 Brain.Image(),
-                GetSetting(Setting.barin_image, $"{Name}.nni")
+                setting.GetSetting(Setting.barin_image, $"{Name}.nni")
             );
 
-            Setting.Save(setting);
+            setting.Save();
             Disposed = true;
 
             Debugger.Console.WriteCommitLine("finished");
@@ -93,46 +91,6 @@ namespace Photon.NeuralNetwork.Opertat.Debug
 
         public abstract string Name { get; }
         public bool Disposed { get; protected set; }
-
-        protected T? GetSetting<T>(string name) where T : struct
-        {
-            if (!setting.ContainsKey(name)) return null;
-            else return setting.Value<T>(name);
-        }
-        protected T GetSetting<T>(string name, T default_value)
-        {
-            T value;
-            if (!setting.ContainsKey(name))
-            {
-                value = default_value;
-                setting.Add(name, JToken.FromObject(value));
-            }
-            else value = setting.Value<T>(name);
-
-            return value;
-        }
-        protected void SetSetting(string name, object value)
-        {
-            if (!setting.ContainsKey(name))
-                setting.Add(name, JToken.FromObject(value));
-            else setting[name].Replace(JToken.FromObject(value));
-        }
-        protected T[] GetSettingArray<T>(string name, T[] default_value)
-        {
-            T[] value;
-            if (!setting.ContainsKey(name))
-            {
-                value = default_value;
-                setting.Add(name, JArray.FromObject(value));
-            }
-            else
-            {
-                var array = setting.Value<JArray>(name);
-                value = array.Select(jv => jv.Value<T>()).ToArray();
-            }
-
-            return value;
-        }
 
         protected static string Print(double[,] matrix, int? digit = 6)
         {

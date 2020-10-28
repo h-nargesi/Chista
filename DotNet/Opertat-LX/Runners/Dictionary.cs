@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Data.SQLite;
 using System.Threading.Tasks;
+using Photon.NeuralNetwork.Opertat.Debug.Config;
 
 namespace Photon.NeuralNetwork.Opertat.Debug
 {
@@ -21,7 +22,7 @@ namespace Photon.NeuralNetwork.Opertat.Debug
             base.OnInitialize();
 
             sqlite = new SQLiteCommand(
-                new SQLiteConnection(GetSetting(Setting.data_provider, "Data Source=data.sqlite")));
+                new SQLiteConnection(setting.GetSetting(Setting.data_provider, "Data Source=data.sqlite")));
             sqlite.Connection.Open();
 
             sqlite.CommandText = "select count(*) from En_Pr";
