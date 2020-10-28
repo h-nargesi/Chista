@@ -84,8 +84,8 @@ with pointer as (
 
 -- SECTION
 ), section as (
-    select Section,
-           min(Ranking) as Ranking,
+    select --Section,
+           --min(Ranking) as Ranking,
            min(DateTimeEn) as DateTimeEn,
            avg(ChangePercent) as ChangePercent
       from label
@@ -93,4 +93,4 @@ with pointer as (
   group by Section
 )
 
-select Ranking, ChangePercent from section order by DateTimeEn desc
+select ChangePercent from section order by DateTimeEn desc
