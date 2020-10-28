@@ -3,6 +3,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Globalization;
+using System.Text.RegularExpressions;
 
 namespace Photon.NeuralNetwork.Opertat.Debug
 {
@@ -14,14 +15,40 @@ namespace Photon.NeuralNetwork.Opertat.Debug
             Debugger.Console = new CommandPrompt();
             Debugger.Console.CommitLine();
 
-            string process = args != null && args.Length > 0 ? args[0] : null;
-
             while (true)
             {
-                switch (process?.ToLower()?.Substring(1))
+                string process, param;
+                if (args != null)
                 {
-                    case "": break;
+                    process = args.Length > 0 ? args[0] : null;
+                    param = args.Length > 1 ? args[1] : null;
+
+                    if (param != null && param.StartsWith("-"))
+                        param = param.Substring(1);
+                }
+                else process = param = null;
+
+                switch (process)
+                {
+                    case "":
+                    case null:
+                        Debugger.Console.CommitLine();
+                        Debugger.Console.WriteCommitLine("get process name.");
+                        break;
+
                     case "quit": return;
+                    case "show":
+                        if(param != null)
+                        {
+                            if (param.StartsWith("\""))
+                                param = param.Substring(1);
+                            if (param.EndsWith("\""))
+                                param = param.Remove(param.Length - 1);
+                        }
+                        string result = NeuralNetworkSerializer.Restore(param).PrintInfo();
+                        result = Regex.Replace(result, "(?<!\r)\n", "\r\n");
+                        Debugger.Console.WriteCommitLine(result);
+                        break;
 
                     case Admission.NAME:
                         using (var adm = new Admission())
@@ -35,14 +62,14 @@ namespace Photon.NeuralNetwork.Opertat.Debug
                         using (var dic = new Stack())
                             dic.Start();
                         break;
-                        
+
                     default:
                         Debugger.Console.CommitLine();
                         Debugger.Console.WriteCommitLine("invalid process name.");
                         break;
                 }
 
-                process = "-" + Console.ReadLine();
+                args = Regex.Replace(Console.ReadLine().Trim(), "[ \t\r\n]{2,}", " ").Split(' ');
                 Debugger.Console.CommitLine();
             }
         }
