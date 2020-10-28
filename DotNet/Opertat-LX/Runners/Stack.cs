@@ -23,33 +23,37 @@ namespace Photon.NeuralNetwork.Opertat.Debug
         private List<(uint cumulative, uint company_id)> cumulative_frequency;
         private SqlCommand sqlite;
         private string print = "";
+        private readonly object sqlite_lock = new object();
 
         protected override void OnInitialize()
         {
             base.OnInitialize();
 
-            sqlite = new SqlCommand
+            lock (sqlite_lock)
             {
-                Connection =
-                    new SqlConnection(GetSetting(Setting.data_provider, ""))
-            };
-            sqlite.Connection.Open();
+                sqlite = new SqlCommand
+                {
+                    Connection =
+                        new SqlConnection(GetSetting(Setting.data_provider, ""))
+                };
+                sqlite.Connection.Open();
 
-            sqlite.CommandText = sql_counting;
-            using var reader = sqlite.ExecuteReader();
+                sqlite.CommandText = sql_counting;
+                using var reader = sqlite.ExecuteReader();
 
-            Count = 0;
-            cumulative_frequency = new List<(uint cumulative, uint company_id)>();
-            while (reader.Read())
-            {
-                cumulative_frequency.Add((Count, (uint)(int)reader[0]));
-                Count += (uint)(int)reader[1];
+                Count = 0;
+                cumulative_frequency = new List<(uint cumulative, uint company_id)>();
+                while (reader.Read())
+                {
+                    cumulative_frequency.Add((Count, (uint)(int)reader[0]));
+                    Count += (uint)(int)reader[1];
+                }
+                if (cumulative_frequency.Count == 0)
+                    throw new Exception("The data set is empty.");
+
+                sqlite.CommandText = "GetTrade";
+                sqlite.CommandType = CommandType.StoredProcedure;
             }
-            if (cumulative_frequency.Count == 0)
-                throw new Exception("The data set is empty.");
-
-            sqlite.CommandText = "GetTrade";
-            sqlite.CommandType = CommandType.StoredProcedure;
         }
         protected override NeuralNetworkImage BrainInitializer()
         {
@@ -66,30 +70,37 @@ namespace Photon.NeuralNetwork.Opertat.Debug
 
             return init.Image();
         }
-        protected override async Task<Record> PrepareNextData(uint offset)
+        protected override Task<Record> PrepareNextData(uint offset)
         {
-            var start_time = DateTime.Now.Ticks;
-            var result = new double[RESULT_COUNT];
-            var signal = new double[SIGNAL_COUNT_TOTAL];
-
-            uint i = 0, company_id;
-            (offset, company_id) = FindCompany(offset);
-
-            sqlite.Parameters.Clear();
-            sqlite.Parameters.Add("@ID", SqlDbType.Int).Value = company_id;
-            sqlite.Parameters.Add("@Type", SqlDbType.Char, 1).Value = 'X';
-            sqlite.Parameters.Add("@Offset", SqlDbType.Int).Value = offset;
-            using var reader = await sqlite.ExecuteReaderAsync();
-            while (reader.Read())
+            return Task.Run(() =>
             {
-                if (i < RESULT_COUNT) result[i] = (double)(decimal)reader[1];
-                else if (i - RESULT_COUNT < SIGNAL_COUNT_TOTAL)
-                    signal[i - RESULT_COUNT] = (double)(decimal)reader[1];
-                else break;
-                i++;
-            }
+                var start_time = DateTime.Now.Ticks;
+                var result = new double[RESULT_COUNT];
+                var signal = new double[SIGNAL_COUNT_TOTAL];
 
-            return new Record(signal, result, company_id, DateTime.Now.Ticks - start_time);
+                uint i = 0, company_id;
+                (offset, company_id) = FindCompany(offset);
+
+                lock (sqlite_lock)
+                    if (sqlite != null)
+                    {
+                        sqlite.Parameters.Clear();
+                        sqlite.Parameters.Add("@ID", SqlDbType.Int).Value = company_id;
+                        sqlite.Parameters.Add("@Type", SqlDbType.Char, 1).Value = 'X';
+                        sqlite.Parameters.Add("@Offset", SqlDbType.Int).Value = offset;
+                        using var reader = sqlite.ExecuteReader();
+                        while (reader.Read())
+                        {
+                            if (i < RESULT_COUNT) result[i] = (double)(decimal)reader[0];
+                            else if (i - RESULT_COUNT < SIGNAL_COUNT_TOTAL)
+                                signal[i - RESULT_COUNT] = (double)(decimal)reader[0];
+                            else break;
+                            i++;
+                        }
+                    }
+
+                return new Record(signal, result, company_id, DateTime.Now.Ticks - start_time);
+            });
         }
         private (uint offset, uint company_id) FindCompany(uint offset)
         {
@@ -151,12 +162,13 @@ namespace Photon.NeuralNetwork.Opertat.Debug
             base.Dispose();
 
             if (sqlite != null)
-            {
-                var connection = sqlite.Connection;
-                sqlite.Dispose();
-                connection?.Dispose();
-                sqlite = null;
-            }
+                lock (sqlite_lock)
+                {
+                    var connection = sqlite.Connection;
+                    sqlite.Dispose();
+                    connection?.Dispose();
+                    sqlite = null;
+                }
         }
 
 
