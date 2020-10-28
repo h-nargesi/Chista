@@ -79,7 +79,8 @@ with pointer as (
              ------------------------------------------------------------------------------------------
              else null
            end as Section,
-           annual.*
+           annual.DateTimeEn,
+           annual.ChangePercent
       from annual
 
 -- SECTION
