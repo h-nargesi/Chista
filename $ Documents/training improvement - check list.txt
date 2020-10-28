@@ -1,6 +1,0 @@
-Complexity (Find the best neurons' architecte)			?
-Epoch (train until increasing errors of test set)		TODO	check validation after each epoch
-Regularization (change error function. add L1 and L2)	OK
-Dropout (turn off some nodes in each epoch)				TODO	change the code
-Random Restart											OK		(train and save bain and start again)
-Other Activation Function (Rectified Linear Unit)		OK		(using relu and soft relu)
