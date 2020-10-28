@@ -29,7 +29,7 @@ namespace Photon.NeuralNetwork.Opertat
 
             NeuralNetworkImage.CheckImageError(image.layers, image.error_fnc);
 
-            layers = new Layer[layers.Length];
+            layers = new Layer[image.layers.Length];
             for (int l = 0; l < layers.Length; l++)
                 layers[l] = image.layers[l].Clone();
             
@@ -157,7 +157,13 @@ namespace Photon.NeuralNetwork.Opertat
             try
             {
                 // dropout
-                if (DropoutFactor > 0) Dropout();
+                if (DropoutFactor > 0)
+                {
+                    var nodes = new HashSet<int>();
+                    var last = layers[^1];
+                    foreach (var layer in layers)
+                        layer.Droupout(last == layer ? 0 : DropoutFactor, ref nodes);
+                }
 
                 // forward-propagation
                 ForwardPropagation(flash, ref signals);
@@ -173,6 +179,14 @@ namespace Photon.NeuralNetwork.Opertat
             {
                 locker.ReleaseWriterLock();
                 LearningFactor = lr;
+
+                // dropout
+                if (DropoutFactor > 0)
+                {
+                    var nodes = new HashSet<int>();
+                    foreach (var layer in layers)
+                        layer.DroupoutRelease(ref nodes);
+                }
             }
 
             // normalaize result to return
@@ -181,12 +195,6 @@ namespace Photon.NeuralNetwork.Opertat
             flash.ResultSignals = signals.ToArray();
 
             return flash;
-        }
-        private void Dropout()
-        {
-            var nodes = new HashSet<int>();
-            foreach (var layer in layers)
-                layer.Droupout(DropoutFactor, ref nodes);
         }
         private void ForwardPropagation(NeuralNetworkFlash flash, ref Vector<double> signals)
         {
@@ -223,8 +231,8 @@ namespace Photon.NeuralNetwork.Opertat
                     Matrix<double>.Build.DenseOfRowVectors(flash.InputSignals[i]);
 
                 // regularization
-                if (CertaintyFactor > 0)
-                    delta_weight -= regularization?.Regularize(layers[i].Synapse, CertaintyFactor);
+                if (CertaintyFactor > 0 && regularization != null)
+                    delta_weight -= regularization.Regularize(layers[i].Synapse, CertaintyFactor);
 
                 // prepare delta for next loop (previous layer)
                 delta = layers[i].Synapse.Transpose().Multiply(delta);
