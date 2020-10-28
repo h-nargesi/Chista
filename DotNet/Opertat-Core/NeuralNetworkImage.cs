@@ -77,9 +77,10 @@ namespace Photon.NeuralNetwork.Opertat
                 buffer.Append("\n").Append("layers: ").Append(layers.Length);
                 if (layers.Length > 0)
                 {
-                    buffer.Append("\tinput: ").Append(layers[0].Synapse.RowCount).Append(" node(s)");
+                    buffer.Append("\n\t")
+                        .Append("input: ").Append(layers[0].Synapse.RowCount).Append(" node(s)");
                     foreach (var l in layers)
-                        buffer.Append("\tlayer: ")
+                        buffer.Append("\n\t").Append("layer: ")
                             .Append(l.Synapse.RowCount).Append(" node(s)")
                             .Append(" func=").Append(l.Conduction.ToString());
                 }
