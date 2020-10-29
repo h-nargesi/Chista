@@ -32,7 +32,7 @@ namespace Photon.NeuralNetwork.Opertat
             layers = new Layer[image.layers.Length];
             for (int l = 0; l < layers.Length; l++)
                 layers[l] = image.layers[l].Clone();
-            
+
             error_fnc = image.error_fnc;
             in_cvrt = image.input_convertor;
             out_cvrt = image.output_convertor;
@@ -85,6 +85,86 @@ namespace Photon.NeuralNetwork.Opertat
             // return result
             return signals.ToArray();
         }
+        public NeuralNetworkFlash Test(double[] inputs)
+        {
+            if (inputs == null)
+                throw new ArgumentNullException(nameof(inputs));
+            var signals = Vector<double>.Build.DenseOfArray(inputs);
+
+            // standardized signals
+            if (in_cvrt != null) signals = in_cvrt.Standardize(signals);
+            // prepare neural network flash
+            var flash = new NeuralNetworkFlash(layers.Length);
+
+            // it's for multi-thread using
+            locker.AcquireReaderLock(lock_time_out);
+            try
+            {
+                // dropout
+                if (DropoutFactor > 0)
+                {
+                    var nodes = new HashSet<int>();
+                    var last = layers[^1];
+                    foreach (var layer in layers)
+                        layer.Droupout(last == layer ? 0 : DropoutFactor, ref nodes);
+                }
+
+                // forward-propagation
+                ForwardPropagation(flash, ref signals);
+            }
+            finally { locker.ReleaseReaderLock(); }
+
+            // normalaize result to return
+            if (out_cvrt != null) signals = out_cvrt.Normalize(signals);
+            // set result
+            flash.ResultSignals = signals.ToArray();
+
+            return flash;
+        }
+        public void Reflect(NeuralNetworkFlash flash, double[] values)
+        {
+            if (flash == null)
+                throw new ArgumentNullException(nameof(flash));
+            if (values == null)
+                throw new ArgumentNullException(nameof(values));
+
+            // pure data
+            var delta = Vector<double>.Build.DenseOfArray(values);
+            // standardized signals
+            if (out_cvrt != null) delta = out_cvrt.Standardize(delta);
+            // calculate error
+            delta = error_fnc.ErrorCalculation(flash.InputSignals[^1], delta);
+
+            // it's for multi-thread using
+            locker.AcquireWriterLock(lock_time_out);
+            double lr = LearningFactor;
+            try
+            {
+                // calculate total error of network result
+                flash.TotalError = delta.PointwiseAbs().Sum();
+                // check if is not any error then do not train the network
+                if (flash.TotalError != 0) return;
+
+                // if nodes are droped out then increase learning factor
+                if (DropoutFactor > 0) LearningFactor /= DropoutFactor;
+                // back-propagation
+                BackPropagation(flash, delta);
+            }
+            finally
+            {
+                // ralease dropout
+                if (DropoutFactor > 0)
+                {
+                    LearningFactor = lr;
+                    var nodes = new HashSet<int>();
+                    foreach (var layer in layers)
+                        layer.DroupoutRelease(ref nodes);
+                }
+
+                // release lock
+                locker.ReleaseWriterLock();
+            }
+        }
         public NeuralNetworkFlash Train(double[] inputs, double[] values)
         {
             if (inputs == null)
@@ -102,8 +182,8 @@ namespace Photon.NeuralNetwork.Opertat
             if (out_cvrt != null) delta = out_cvrt.Standardize(delta);
 
             // it's for multi-thread using
-            double lr = LearningFactor;
             locker.AcquireWriterLock(lock_time_out);
+            double lr = LearningFactor;
             try
             {
                 // dropout
@@ -120,27 +200,31 @@ namespace Photon.NeuralNetwork.Opertat
 
                 // calculate error
                 delta = error_fnc.ErrorCalculation(flash.InputSignals[^1], delta);
+                
+                // calculate total error of network result
                 flash.TotalError = delta.PointwiseAbs().Sum();
-
+                // check if is not any error then do not train the network
                 if (flash.TotalError != 0)
                 {
-                    // back-propagation
+                    // if nodes are droped out then increase learning factor
                     if (DropoutFactor > 0) LearningFactor /= DropoutFactor;
+                    // back-propagation
                     BackPropagation(flash, delta);
                 }
             }
             finally
             {
-                locker.ReleaseWriterLock();
-                LearningFactor = lr;
-
-                // dropout
+                // release dropout
                 if (DropoutFactor > 0)
                 {
+                    LearningFactor = lr;
                     var nodes = new HashSet<int>();
                     foreach (var layer in layers)
                         layer.DroupoutRelease(ref nodes);
                 }
+
+                // release lock
+                locker.ReleaseWriterLock();
             }
 
             // normalaize result to return

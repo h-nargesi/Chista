@@ -12,6 +12,14 @@ namespace Photon.NeuralNetwork.Opertat.Implement
         public Matrix<double> Synapse { get; set; }
         public Vector<double> Bias { get; set; }
         public IConduction Conduction { get; }
+        public Matrix<double> SafeSynapse
+        {
+            get
+            {
+                if (dropout_synapse_backup == null) return Synapse;
+                else return dropout_synapse_backup;
+            }
+        }
 
         public Layer(IConduction conduction)
         {
