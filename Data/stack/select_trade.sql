@@ -23,7 +23,7 @@ with pointer as (
 
 -- RESTRICTION
 ), ristriction as (
-	select		StartDateEn,
+	select		StartDateEn, StartDateJl,
 				dateadd(month, 1,
 					dbo.jparse(StartDateJl / 10000 - 4, -- YEARS_COUNT + 1
 					StartDateJl % 10000 / 100,
@@ -37,7 +37,7 @@ with pointer as (
 				floor(DateTimeJl / 10000) as DateTimeJYear
 	from (
 		select		row_number() over (order by DateTimeEn desc) as Ranking,
-					StartDateEn, dbo.jalali(StartDateEn) as StartDateJl,
+					StartDateEn, StartDateJl,
 					DateTimeEn, dbo.jalali(DateTimeEn) as DateTimeJl,
 					lead(DateTimeEn) over (order by DateTimeEn desc) as DateTimeEnNext,
 					100 * isnull(ClosePriceChange / lead(ClosePrice) over (order by DateTimeEn desc), 0) as ChangePercent
