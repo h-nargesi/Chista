@@ -74,6 +74,10 @@ namespace Photon.NeuralNetwork.Opertat.Implement
             }
             else switch (regularization)
                 {
+                    case RegularizationL1 _:
+                        code = 1;
+                        parameters = null;
+                        break;
                     case RegularizationL2 _:
                         code = 2;
                         parameters = null;
@@ -140,6 +144,7 @@ namespace Photon.NeuralNetwork.Opertat.Implement
             switch (code)
             {
                 case 0: return null;
+                case 1: return new RegularizationL1();
                 case 2: return new RegularizationL2();
                 default:
                     throw new Exception(
