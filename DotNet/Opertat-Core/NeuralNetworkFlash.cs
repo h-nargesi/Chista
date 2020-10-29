@@ -10,6 +10,7 @@ namespace Photon.NeuralNetwork.Opertat
         internal readonly Vector<double>[] InputSignals;
         private readonly List<Vector<double>[]> SignalsExtra;
         public double[] ResultSignals { get; internal set; }
+
         public NeuralNetworkFlash(int size)
         {
             SignalsSum = new Vector<double>[size];
@@ -30,6 +31,24 @@ namespace Photon.NeuralNetwork.Opertat
                 while (SignalsExtra.Count <= index)
                     SignalsExtra.Add(new Vector<double>[SignalsSum.Length]);
                 SignalsExtra[index] = value;
+            }
+        }
+
+        public double TotalError { get; internal set; }
+        public double Accuracy
+        {
+            get
+            {
+                if (ResultSignals == null || ResultSignals.Length < 1) return 0;
+                else return 1 - TotalError / ResultSignals.Length;
+            }
+        }
+        public double ErrorAverage
+        {
+            get
+            {
+                if (ResultSignals == null || ResultSignals.Length < 1) return 0;
+                else return TotalError / ResultSignals.Length;
             }
         }
     }

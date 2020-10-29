@@ -85,56 +85,6 @@ namespace Photon.NeuralNetwork.Opertat
             // return result
             return signals.ToArray();
         }
-        public NeuralNetworkFlash Test(double[] inputs)
-        {
-            if (inputs == null)
-                throw new ArgumentNullException(nameof(inputs));
-            var signals = Vector<double>.Build.DenseOfArray(inputs);
-
-            // standardized signals
-            if (in_cvrt != null) signals = in_cvrt.Standardize(signals);
-            // prepare neural network flash
-            var flash = new NeuralNetworkFlash(layers.Length);
-
-            // it's for multi-thread using
-            locker.AcquireReaderLock(lock_time_out);
-            try
-            {
-                // forward-propagation
-                ForwardPropagation(flash, ref signals);
-            }
-            finally { locker.ReleaseReaderLock(); }
-
-            // normalaize result to return
-            if (out_cvrt != null) signals = out_cvrt.Normalize(signals);
-            // set result
-            flash.ResultSignals = signals.ToArray();
-
-            return flash;
-        }
-        public void Reflect(NeuralNetworkFlash flash, double[] values)
-        {
-            if (flash == null)
-                throw new ArgumentNullException(nameof(flash));
-            if (values == null)
-                throw new ArgumentNullException(nameof(values));
-
-            // pure data
-            var delta = Vector<double>.Build.DenseOfArray(values);
-            // standardized signals
-            if (out_cvrt != null) delta = out_cvrt.Standardize(delta);
-            // calculate error
-            delta = error_fnc.ErrorCalculation(flash.InputSignals[^1], delta);
-
-            // it's for multi-thread using
-            locker.AcquireWriterLock(lock_time_out);
-            try
-            {
-                // back-propagation
-                BackPropagation(flash, delta);
-            }
-            finally { locker.ReleaseWriterLock(); }
-        }
         public NeuralNetworkFlash Train(double[] inputs, double[] values)
         {
             if (inputs == null)
@@ -170,10 +120,14 @@ namespace Photon.NeuralNetwork.Opertat
 
                 // calculate error
                 delta = error_fnc.ErrorCalculation(flash.InputSignals[^1], delta);
+                flash.TotalError = delta.PointwiseAbs().Sum();
 
-                // back-propagation
-                if (DropoutFactor > 0) LearningFactor /= DropoutFactor;
-                BackPropagation(flash, delta);
+                if (flash.TotalError != 0)
+                {
+                    // back-propagation
+                    if (DropoutFactor > 0) LearningFactor /= DropoutFactor;
+                    BackPropagation(flash, delta);
+                }
             }
             finally
             {
@@ -243,7 +197,7 @@ namespace Photon.NeuralNetwork.Opertat
             }
         }
 
-        private Vector<double> Error(NeuralNetworkFlash flash, double[] values)
+        public double[] Errors(NeuralNetworkFlash flash, double[] values)
         {
             if (flash == null)
                 throw new ArgumentNullException(nameof(flash));
@@ -251,50 +205,14 @@ namespace Photon.NeuralNetwork.Opertat
                 throw new ArgumentNullException(nameof(values));
 
             // calucate errors
-            return error_fnc.ErrorCalculation(
+            var errors = error_fnc.ErrorCalculation(
                 Vector<double>.Build.DenseOfArray(flash.ResultSignals),
                 Vector<double>.Build.DenseOfArray(values));
-        }
-        public double[] Errors(NeuralNetworkFlash flash, double[] values)
-        {
-            var error = Error(flash, values);
 
-            var result = error.AsArray();
-            if (result == null) result = error.ToArray();
+            var result = errors.AsArray();
+            if (result == null) result = errors.ToArray();
 
             return result;
-        }
-        public double ErrorTotal(NeuralNetworkFlash flash, double[] values)
-        {
-            return Error(flash, values).PointwiseAbs().Sum();
-        }
-        public double ErrorAverage(NeuralNetworkFlash flash, double[] values)
-        {
-            if (values.Length < 1) return 0;
-            else return ErrorTotal(flash, values) / values.Length;
-        }
-
-        public double Accuracy(NeuralNetworkFlash flash, double[] values, out double error_sum)
-        {
-            if (flash == null)
-                throw new ArgumentNullException(nameof(flash));
-            if (values == null)
-                throw new ArgumentNullException(nameof(values));
-
-            if (values.Length == 0)
-            {
-                error_sum = 0;
-                return 0;
-            }
-
-            var criterion = Vector<double>.Build.DenseOfArray(values);
-            // standardized signals
-            if (out_cvrt != null) criterion = out_cvrt.Standardize(criterion);
-            // calculate error
-            criterion = error_fnc.ErrorCalculation(flash.InputSignals[^1], criterion);
-            // calculate accuracy
-            error_sum = criterion.PointwiseAbs().Sum();
-            return 1 - error_sum / criterion.Count;
         }
 
 #if NaN && DEBUG

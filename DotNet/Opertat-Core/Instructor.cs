@@ -53,23 +53,20 @@ namespace Photon.NeuralNetwork.Opertat
 
                         if (record != null && record.data != null && record.result != null)
                         {
+                            double error;
                             var i = 1;
                             do
                             {
                                 if (stoping) return;
                                 if (ReflectFinished != null) start_time = DateTime.Now.Ticks;
 
-                                // pridict
-                                var predict = Brain.Test(record.data);
+                                // training
+                                var predict = Brain.Train(record.data, record.result);
 
                                 // check accuracy and error
-                                accuracy_last = Brain.Accuracy(
-                                    predict, record.result, out double error_sum);
+                                accuracy_last = predict.Accuracy;
+                                error = 1 - accuracy_last;
                                 Accuracy = (accuracy_total + accuracy_last) / (record_count + 1);
-                                if (error_sum == 0) break;
-
-                                // learning
-                                Brain.Reflect(predict, record.result);
 
                                 // call event
                                 if (ReflectFinished != null)
@@ -77,7 +74,7 @@ namespace Photon.NeuralNetwork.Opertat
                                     else ReflectFinished.Invoke(
                                         predict, record, DateTime.Now.Ticks - start_time);
                             }
-                            while (++i < Tries);
+                            while (++i < Tries && error != 0);
 
                             record_count++;
                             accuracy_total += accuracy_last;
