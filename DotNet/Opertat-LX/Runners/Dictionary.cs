@@ -88,9 +88,8 @@ namespace Photon.NeuralNetwork.Opertat.Debug
             if (extra[1] == action_str) return null;
 
             IgnoreUnnecessary(record.result, flash.ResultSignals);
-            var error = Brain.ErrorTotal(flash, record.result);
 
-            print = $"{Offset}: ({extra[0]},{Finglish(Encoding.UTF8.GetString(Action(record.result)).Trim())}) => ({Print(error, null)}){Finglish(Trim(action_str))}";
+            print = $"{Offset}: ({extra[0]},{Finglish(Encoding.UTF8.GetString(Action(record.result)).Trim())}) => ({Print(flash.TotalError, null)}){Finglish(Trim(action_str))}";
             Debugger.Console.WriteWord(print);
 
             return record.result;
