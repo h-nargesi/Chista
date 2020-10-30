@@ -3,7 +3,7 @@ go
 
 declare @ID int = 2892;
 declare @Type char(1) = 'X';
-declare @Offset bigint = 10;
+declare @Offset bigint = 0;
 
 --create or alter procedure GetTrade  @ID int, @Type char(1), @Offset bigint as
 
@@ -19,15 +19,18 @@ with pointer as (
 	select		lag(DateTimeEn, 20/*RESULT_COUNT*/) over (order by DateTimeEn desc) as StartDateEn
 	from		Trade
 	where		InstrumentID = @ID and RecordType = @Type
-	order by	DateTimeEn desc offset 20/*RESULT_COUNT*/ + @Offset rows fetch first 1 rows only
+	order by	DateTimeEn desc
+	offset		20/*RESULT_COUNT*/ + @Offset rows
+	fetch		first 1 rows only
 
 -- RESTRICTION
 ), ristriction as (
 	select		StartDateEn, StartDateJl,
 				dateadd(month, 1,
-					dbo.jparse(StartDateJl / 10000 - 4, -- YEARS_COUNT + 1
+					dbo.jparse(StartDateJl / 10000 - 4,/*YEARS_COUNT + 1*/
 					StartDateJl % 10000 / 100,
-					StartDateJl % 100, 0, 0, 0)) as EndDateEn
+					StartDateJl % 100, 0, 0, 0)) as EndDateEn,
+				StartDateJl - 40000/*YEARS_COUNT + 1*/ as DateTimeJl
 	from (select StartDateEn, dbo.jalali(StartDateEn) as StartDateJl from pointer) p
 
 -- STREAM
@@ -37,8 +40,7 @@ with pointer as (
 				floor(DateTimeJl / 10000) as DateTimeJYear
 	from (
 		select		row_number() over (order by DateTimeEn desc) as Ranking,
-					StartDateEn, StartDateJl,
-					DateTimeEn, dbo.jalali(DateTimeEn) as DateTimeJl,
+					StartDateEn, StartDateJl, DateTimeEn, DateTimeJl,
 					lead(DateTimeEn) over (order by DateTimeEn desc) as DateTimeEnNext,
 					100 * isnull(ClosePriceChange / lead(ClosePrice) over (order by DateTimeEn desc), 0) as ChangePercent
 		from		Trade, ristriction
