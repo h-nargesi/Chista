@@ -29,8 +29,7 @@ with pointer as (
 				dateadd(month, 1,
 					dbo.jparse(StartDateJl / 10000 - 4,/*YEARS_COUNT + 1*/
 					StartDateJl % 10000 / 100,
-					StartDateJl % 100, 0, 0, 0)) as EndDateEn,
-				StartDateJl - 40000/*YEARS_COUNT + 1*/ as DateTimeJl
+					StartDateJl % 100, 0, 0, 0)) as EndDateEn
 	from (select StartDateEn, dbo.jalali(StartDateEn) as StartDateJl from pointer) p
 
 -- STREAM
@@ -40,7 +39,7 @@ with pointer as (
 				floor(DateTimeJl / 10000) as DateTimeJYear
 	from (
 		select		row_number() over (order by DateTimeEn desc) as Ranking,
-					StartDateEn, StartDateJl, DateTimeEn, DateTimeJl,
+					StartDateEn, StartDateJl, DateTimeEn, dbo.jalali(DateTimeEn) DateTimeJl,
 					lead(DateTimeEn) over (order by DateTimeEn desc) as DateTimeEnNext,
 					100 * isnull(ClosePriceChange / lead(ClosePrice) over (order by DateTimeEn desc), 0) as ChangePercent
 		from		Trade, ristriction
@@ -50,9 +49,11 @@ with pointer as (
 -- ANNUAL
 ), annual as (
   select Ranking, DateTimeEn,
-         max(period_start) over (order by DateTimeEn desc rows between 60/*SIGNAL_LAST_YEARS*/ preceding and current row)
+         max(period_start) over (
+            order by DateTimeEn desc rows between 60/*SIGNAL_LAST_YEARS*/ preceding and current row)
 			as period_start,
-         max(year_diff) over (order by DateTimeEn desc rows between 60/*SIGNAL_LAST_YEARS*/ preceding and current row)
+         max(year_diff) over (
+            order by DateTimeEn desc rows between 60/*SIGNAL_LAST_YEARS*/ preceding and current row)
 			as year_diff,
          ChangePercent
     from (
@@ -69,16 +70,25 @@ with pointer as (
 -- LABEL
 ), label as (
     select case
-             when Ranking <= 20/*RESULT_COUNT*/								then '0-' + cast(Ranking as varchar)
-             when Ranking <= 20/*RESULT_COUNT*/ + 40/*SIGNAL_STEP_COUNT*/	then '1-' + cast(Ranking as varchar)
-             when Ranking <= 20/*RESULT_COUNT*/ + 80/*SIGNAL_STEP_COUNT*/	then '2-' + cast(floor(Ranking / 2) as varchar)
-             when Ranking <= 20/*RESULT_COUNT*/ + 120/*SIGNAL_STEP_COUNT*/	then '3-' + cast(floor(Ranking / 4) as varchar)
-             when Ranking <= 20/*RESULT_COUNT*/ + 160/*SIGNAL_STEP_COUNT*/	then '4-' + cast(floor(Ranking / 8) as varchar)
-             ------------------------------------------------------------------------------------------
-			 --when year_diff > 3 then null
-             when Ranking between period_start and period_start + 60/*SIGNAL_LAST_YEARS*/ then 
-                  '7-' + cast(year_diff as varchar) + '-' + cast(floor(Ranking / year_diff) as varchar)
-             ------------------------------------------------------------------------------------------
+             when Ranking <= 20/*RESULT_COUNT*/
+             then '0-' + cast(Ranking as varchar)
+             -----------------------------------------------------------
+             when Ranking <= 20/*RESULT_COUNT*/ + 40/*SIGNAL_STEP_COUNT*/
+             then '1-' + cast((Ranking - 21) + 1 as varchar)
+             -----------------------------------------------------------
+             when Ranking <= 20/*RESULT_COUNT*/ + 80/*SIGNAL_STEP_COUNT*2*/
+             then '2-' + cast(floor((Ranking - 61) / 2) + 1 as varchar)
+             -----------------------------------------------------------
+             when Ranking <= 20/*RESULT_COUNT*/ + 120/*SIGNAL_STEP_COUNT*3*/
+             then '3-' + cast(floor((Ranking - 101) / 4) + 1 as varchar)
+             -----------------------------------------------------------
+             when Ranking <= 20/*RESULT_COUNT*/ + 160/*SIGNAL_STEP_COUNT*4*/
+             then '4-' + cast(floor((Ranking - 141) / 8) + 1 as varchar)
+             -----------------------------------------------------------
+             when Ranking between period_start and period_start + 58/*SIGNAL_LAST_YEARS-2*/
+             then '7-' + cast(year_diff - 1 as varchar) + 
+                  '-' + cast(floor((Ranking - period_start + 1) / year_diff) + 1 as varchar)
+             -------------------------------------------------------------------------------
              else null
            end as Section,
            annual.DateTimeEn,
@@ -87,13 +97,13 @@ with pointer as (
 
 -- SECTION
 ), section as (
-    select --Section,
-           --min(Ranking) as Ranking,
-           min(DateTimeEn) as DateTimeEn,
-           avg(ChangePercent) as ChangePercent
+    select avg(ChangePercent) as ChangePercent
+         , min(DateTimeEn) as DateTimeEn
+         , Section
+         , count(*) as Quantity
       from label
      where Section is not null
   group by Section
 )
 
-select ChangePercent from section order by DateTimeEn desc
+select */*ChangePercent*/ from section order by DateTimeEn desc

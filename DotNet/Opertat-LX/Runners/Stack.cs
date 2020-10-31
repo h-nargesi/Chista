@@ -174,19 +174,37 @@ namespace Photon.NeuralNetwork.Opertat.Debug
 
 
         #region SQL Queries
+        private const int YEARS_COUNT = 3;
         private const int RESULT_COUNT = 20;
         private const int SIGNAL_STEP_COUNT = 40;
-        private const int SIGNAL_LAST_YEARS = SIGNAL_STEP_COUNT + RESULT_COUNT;
-        private const int SIGNAL_COUNT_BASICAL = RESULT_COUNT + SIGNAL_STEP_COUNT * 4;
-        private const int SIGNAL_COUNT_TOTAL = SIGNAL_COUNT_BASICAL + SIGNAL_LAST_YEARS * YEARS_COUNT;
-        private const int YEARS_COUNT = 3;
+        private const int SIGNAL_STEP_LAST_YEARS = RESULT_COUNT + SIGNAL_STEP_COUNT;
+        private static readonly int SIGNAL_COUNT_BASICAL;
+        private static readonly int SIGNAL_COUNT_LAST_YEARS;
+        private static readonly int SIGNAL_COUNT_TOTAL;
+        private static readonly int RECORDS_COUNT_BASICAL;
+        private static readonly int RECORDS_COUNT_TOTAL;
+        
+        static Stack()
+        {
+            SIGNAL_COUNT_BASICAL = SIGNAL_STEP_COUNT +
+                (int)Math.Ceiling(SIGNAL_STEP_COUNT / 2.0) +
+                (int)Math.Ceiling(SIGNAL_STEP_COUNT / 4.0) +
+                (int)Math.Ceiling(SIGNAL_STEP_COUNT / 8.0);
+            RECORDS_COUNT_BASICAL = RESULT_COUNT + SIGNAL_COUNT_BASICAL;
+
+            SIGNAL_COUNT_LAST_YEARS = 0;
+            for (int y = 1; y <= YEARS_COUNT;)
+                SIGNAL_COUNT_LAST_YEARS += (int)Math.Ceiling(SIGNAL_STEP_LAST_YEARS / (double)(++y));
+            SIGNAL_COUNT_TOTAL = SIGNAL_COUNT_BASICAL + SIGNAL_COUNT_LAST_YEARS;
+            RECORDS_COUNT_TOTAL = RESULT_COUNT + SIGNAL_COUNT_TOTAL;
+        }
 
         private readonly static string sql_counting = $@"
-select		InstrumentID, sum(iif(RecordType = 'X', 1, 0)) - {SIGNAL_COUNT_BASICAL} as Amount
+select		InstrumentID, sum(iif(RecordType = 'X', 1, 0)) - {RECORDS_COUNT_BASICAL} as Amount
 from		Trade
 where		RecordType is not null
 group by	InstrumentID
-having      count(*) > {SIGNAL_COUNT_BASICAL}
+having      count(*) > {RECORDS_COUNT_BASICAL}
 order by	Amount desc";
         #endregion
     }
