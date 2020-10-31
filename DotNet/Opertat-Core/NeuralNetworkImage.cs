@@ -78,7 +78,7 @@ namespace Photon.NeuralNetwork.Opertat
                 if (layers.Length > 0)
                 {
                     buffer.Append("\n\t")
-                        .Append("input: ").Append(layers[0].Synapse.RowCount).Append(" node(s)");
+                        .Append("input: ").Append(layers[0].Synapse.ColumnCount).Append(" node(s)");
                     foreach (var l in layers)
                         buffer.Append("\n\t").Append("layer: ")
                             .Append(l.Synapse.RowCount).Append(" node(s)")
