@@ -60,7 +60,7 @@ namespace Photon.NeuralNetwork.Opertat.Debug
         protected override NeuralNetworkImage[] BrainInitializer()
         {
             var layers = setting.Brain.Layers.NodesCount ??
-                throw new Exception("the default layer is not set.");
+                throw new Exception("the default layer's node count is not set.");
 
             var images = new NeuralNetworkImage[setting.Brain.ImagesCount];
             var conduction = setting.Brain.Layers.Conduction == "soft-relu" ?

@@ -40,7 +40,9 @@ namespace Photon.NeuralNetwork.Opertat.Debug
             NeuralNetworkImage[] images;
             if (!setting.Progress.Rebuild)
             {
-                string[] file_names = Directory.GetFiles(setting.Brain.ImagesPath, $"{Name}-*.nni");
+                string path = setting.Brain.ImagesPath;
+                if (string.IsNullOrWhiteSpace(path)) path = Directory.GetCurrentDirectory();
+                string[] file_names = Directory.GetFiles(path, $"{Name}-*.nni");
                 if (file_names.Length == 0) images = null;
                 else
                 {

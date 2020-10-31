@@ -21,6 +21,7 @@ namespace Photon.NeuralNetwork.Opertat.Debug
 
         protected override void OnInitialize()
         {
+            setting.Brain.ImagesPathDefault = "";
             base.OnInitialize();
 
             string print = null;
@@ -42,7 +43,7 @@ namespace Photon.NeuralNetwork.Opertat.Debug
         {
             var conduction = setting.Brain.Layers.Conduction;
             var layers = setting.Brain.Layers.NodesCount ??
-                throw new Exception("the default layer is not set.");
+                throw new Exception("the default layer's node count is not set.");
 
             var image = new NeuralNetworkInitializer()
                 .SetInputSize(2)
@@ -114,7 +115,7 @@ namespace Photon.NeuralNetwork.Opertat.Debug
                 print += $"result:{Print(record.result, 6)}\t";
                 print += $"output:{Print(flash.ResultSignals, 6)}\t";
                 print += $"accuracy:{Print(Accuracy * 100, 2)}\t";
-                print += $"error:{Print(Brains[image_index].Errors(flash, record.result), null)}\r\n";
+                print += $"error:{Print(Brains[0].Errors(flash, record.result), null)}\r\n";
 
                 /*var image = Brain.Image();
                 for (var i = 0; i < image.layers.Length; i++)

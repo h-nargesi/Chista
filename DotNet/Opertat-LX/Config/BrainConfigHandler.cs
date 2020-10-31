@@ -9,7 +9,7 @@ namespace Photon.NeuralNetwork.Opertat.Debug.Config
     {
         public BrainConfigHandler(JObject setting) : base(setting) { }
 
-        public const string key = "barin";
+        public const string key = "brain";
         private const string images_path = "images-path";
         private const string images_count = "images-count";
         private const string learning_factor = "learning-factor";

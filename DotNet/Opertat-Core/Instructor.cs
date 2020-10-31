@@ -74,18 +74,17 @@ namespace Photon.NeuralNetwork.Opertat
                         {
                             int t = 0;
                             Task[] tasks = new Task[brains.Count];
+                            NeuralNetworkFlash predict = null;
+                            if (ReflectFinished != null) start_time = DateTime.Now.Ticks;
 
                             lock (brains)
                                 foreach (Brain brain in brains)
-                                {
-                                    tasks[t] = Task.Run(() =>
+                                    tasks[t++] = Task.Run(() =>
                                     {
-                                        double error;
                                         var i = 1;
                                         do
                                         {
                                             if (stoping) return;
-                                            if (ReflectFinished != null) start_time = DateTime.Now.Ticks;
 
                                             // training
                                             var predict = brain.Train(record.data, record.result);
@@ -94,26 +93,23 @@ namespace Photon.NeuralNetwork.Opertat
                                             lock (accuracy_lock)
                                             {
                                                 accuracy_last = predict.Accuracy;
-                                                error = 1 - accuracy_last;
                                                 Accuracy =
                                                     (accuracy_total + accuracy_last) /
                                                     (record_count + 1);
                                             }
-
-                                            // call event
-                                            if (ReflectFinished != null)
-                                                if (stoping) return;
-                                                else ReflectFinished.Invoke(
-                                                    t, predict, record, DateTime.Now.Ticks - start_time);
                                         }
-                                        while (++i < Tries && error != 0);
+                                        while (++i < Tries && accuracy_last != 1);
                                     });
-                                    t++;
-                                }
                             Task.WaitAll(tasks);
 
+                            // call event
+                            if (ReflectFinished != null)
+                                if (stoping) return;
+                                else ReflectFinished.Invoke(
+                                    predict, record, DateTime.Now.Ticks - start_time);
+
                             record_count++;
-                            accuracy_total += accuracy_last;
+                            accuracy_total += predict.Accuracy;
                         }
 
                         // next offset
@@ -130,7 +126,7 @@ namespace Photon.NeuralNetwork.Opertat
             stoping = true;
         }
 
-        protected Action<int, NeuralNetworkFlash, Record, long> ReflectFinished { get; set; }
+        protected Action<NeuralNetworkFlash, Record, long> ReflectFinished { get; set; }
 
         protected class Record
         {
