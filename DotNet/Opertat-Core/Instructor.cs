@@ -1,19 +1,38 @@
 using System;
+using System.Collections.Generic;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Photon.NeuralNetwork.Opertat
 {
     public abstract class Instructor : IDisposable
     {
+        private readonly List<Brain> brains = new List<Brain>();
+        private readonly object accuracy_lock = new object();
         private bool stoping = false;
 
-        public Brain Brain { get; protected set; }
         public uint Offset { get; set; }
         public uint Count { get; set; }
         public uint Epoch { get; set; }
         public uint Tries { get; set; }
         public double Accuracy { get; private set; }
+        public IReadOnlyList<Brain> Brains => brains;
+        public void BrainAdd(Brain brain)
+        {
+            lock (brains)
+                brains.Add(brain);
+        }
+        public void BrainRemove(Brain brain)
+        {
+            lock (brains)
+                brains.Remove(brain);
+        }
+        public void BrainRemove(int index)
+        {
+            lock (brains)
+                brains.RemoveAt(index);
+        }
 
         protected abstract void OnInitialize();
         protected abstract Task<Record> PrepareNextData(uint offset);
@@ -53,28 +72,45 @@ namespace Photon.NeuralNetwork.Opertat
 
                         if (record != null && record.data != null && record.result != null)
                         {
-                            double error;
-                            var i = 1;
-                            do
-                            {
-                                if (stoping) return;
-                                if (ReflectFinished != null) start_time = DateTime.Now.Ticks;
+                            int t = 0;
+                            Task[] tasks = new Task[brains.Count];
 
-                                // training
-                                var predict = Brain.Train(record.data, record.result);
+                            lock (brains)
+                                foreach (Brain brain in brains)
+                                {
+                                    tasks[t] = Task.Run(() =>
+                                    {
+                                        double error;
+                                        var i = 1;
+                                        do
+                                        {
+                                            if (stoping) return;
+                                            if (ReflectFinished != null) start_time = DateTime.Now.Ticks;
 
-                                // check accuracy and error
-                                accuracy_last = predict.Accuracy;
-                                error = 1 - accuracy_last;
-                                Accuracy = (accuracy_total + accuracy_last) / (record_count + 1);
+                                            // training
+                                            var predict = brain.Train(record.data, record.result);
 
-                                // call event
-                                if (ReflectFinished != null)
-                                    if (stoping) return;
-                                    else ReflectFinished.Invoke(
-                                        predict, record, DateTime.Now.Ticks - start_time);
-                            }
-                            while (++i < Tries && error != 0);
+                                            // check accuracy and error
+                                            lock (accuracy_lock)
+                                            {
+                                                accuracy_last = predict.Accuracy;
+                                                error = 1 - accuracy_last;
+                                                Accuracy =
+                                                    (accuracy_total + accuracy_last) /
+                                                    (record_count + 1);
+                                            }
+
+                                            // call event
+                                            if (ReflectFinished != null)
+                                                if (stoping) return;
+                                                else ReflectFinished.Invoke(
+                                                    t, predict, record, DateTime.Now.Ticks - start_time);
+                                        }
+                                        while (++i < Tries && error != 0);
+                                    });
+                                    t++;
+                                }
+                            Task.WaitAll(tasks);
 
                             record_count++;
                             accuracy_total += accuracy_last;
@@ -94,7 +130,7 @@ namespace Photon.NeuralNetwork.Opertat
             stoping = true;
         }
 
-        protected Action<NeuralNetworkFlash, Record, long> ReflectFinished { get; set; }
+        protected Action<int, NeuralNetworkFlash, Record, long> ReflectFinished { get; set; }
 
         protected class Record
         {
