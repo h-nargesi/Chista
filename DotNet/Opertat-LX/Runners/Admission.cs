@@ -24,7 +24,7 @@ namespace Photon.NeuralNetwork.Opertat.Debug
             base.OnInitialize();
 
             string print = null;
-            var image = Brain.Image();
+            var image = Brains[0].Image();
             for (var i = 0; i < image.layers.Length; i++)
             {
                 print += Print(image.layers[i].Bias.ToArray());
@@ -38,11 +38,11 @@ namespace Photon.NeuralNetwork.Opertat.Debug
             Count = 128;
             Offset = 0;
         }
-        protected override NeuralNetworkImage BrainInitializer()
+        protected override NeuralNetworkImage[] BrainInitializer()
         {
-            var model_info = setting[Setting.model, null];
-            var conduction = model_info.GetSetting(Setting.model_conduction, "soft-relu");
-            var layers = model_info.GetSettingArray(Setting.model_layers, 10, 10);
+            var conduction = setting.Brain.Layers.Conduction;
+            var layers = setting.Brain.Layers.NodesCount ??
+                throw new Exception("the default layer is not set.");
 
             var image = new NeuralNetworkInitializer()
                 .SetInputSize(2)
@@ -54,7 +54,7 @@ namespace Photon.NeuralNetwork.Opertat.Debug
                     new DataRange(SignalRange * 2, SignalRange))
                 .Image();
 
-            return image;
+            return new NeuralNetworkImage[] { image };
         }
         protected override Task<Record> PrepareNextData(uint offset)
         {
@@ -100,7 +100,7 @@ namespace Photon.NeuralNetwork.Opertat.Debug
 
         public Admission()
         {
-            ReflectFinished = (flash, record, timing) =>
+            ReflectFinished = (image_index, flash, record, timing) =>
             {
                 if (Offset % Count == 0)
                     Debugger.Console.CommitLine();
@@ -114,7 +114,7 @@ namespace Photon.NeuralNetwork.Opertat.Debug
                 print += $"result:{Print(record.result, 6)}\t";
                 print += $"output:{Print(flash.ResultSignals, 6)}\t";
                 print += $"accuracy:{Print(Accuracy * 100, 2)}\t";
-                print += $"error:{Print(Brain.Errors(flash, record.result), null)}\r\n";
+                print += $"error:{Print(Brains[image_index].Errors(flash, record.result), null)}\r\n";
 
                 /*var image = Brain.Image();
                 for (var i = 0; i < image.layers.Length; i++)

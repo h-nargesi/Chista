@@ -21,8 +21,7 @@ namespace Photon.NeuralNetwork.Opertat.Debug
         {
             base.OnInitialize();
 
-            sqlite = new SQLiteCommand(
-                new SQLiteConnection(setting.GetSetting(Setting.data_provider, "Data Source=data.sqlite")));
+            sqlite = new SQLiteCommand(new SQLiteConnection(setting.DataProvider));
             sqlite.Connection.Open();
 
             sqlite.CommandText = "select count(*) from En_Pr";
@@ -30,7 +29,7 @@ namespace Photon.NeuralNetwork.Opertat.Debug
             if (reader.Read()) Count = (uint)(long)reader[0];
             else throw new Exception("The unkown count.");
         }
-        protected override NeuralNetworkImage BrainInitializer()
+        protected override NeuralNetworkImage[] BrainInitializer()
         {
             var relu = new SoftReLU();
             var init = new NeuralNetworkInitializer()
@@ -43,7 +42,7 @@ namespace Photon.NeuralNetwork.Opertat.Debug
                 .SetCorrection(new Errorest())
                 .SetDataConvertor(new DataRange(128, -128), new DataRange(255, 0));
 
-            return init.Image();
+            return new NeuralNetworkImage[] { init.Image() };
         }
         protected async override Task<Record> PrepareNextData(uint offset)
         {
@@ -97,9 +96,9 @@ namespace Photon.NeuralNetwork.Opertat.Debug
 
         public Dictionary()
         {
-            ReflectFinished = (flash, record, timing) =>
+            ReflectFinished = (image_index, flash, record, timing) =>
             {
-                if (Offset % Count == 0)
+                if (image_index == 0 && Offset % Count == 0)
                 {
                     print = "";
                     if (record == null) return;

@@ -11,10 +11,10 @@ namespace Photon.NeuralNetwork.Opertat.Debug
 {
     public abstract class NeuralNetworkRunner : Instructor, IDisposable
     {
-        protected readonly ConfigHandler setting;
+        protected readonly RootConfigHandler setting;
         public NeuralNetworkRunner()
         {
-            setting = new ConfigHandler(Setting.Read($"setting-{Name}.json"));
+            setting = new RootConfigHandler($"setting-{Name}.json");
         }
 
         public new void Start()
@@ -32,31 +32,52 @@ namespace Photon.NeuralNetwork.Opertat.Debug
             Thread.CurrentThread.CurrentCulture = ci;
             Thread.CurrentThread.CurrentUICulture = ci;
 
-            Offset = setting.GetSetting<uint>(Setting.current_offset, 0);
-            Epoch = setting.GetSetting<uint>(Setting.learning_epoch, 1024);
-            Tries = setting.GetSetting<uint>(Setting.learning_tries, 1);
+            Offset = setting.Progress.CurrentOffset;
+            Epoch = setting.Progress.LearningEpoch;
+            Tries = setting.Progress.LearningTries;
 
-            bool? rebuild = setting.GetSetting<bool>(Setting.rebuild);
-            string barin_image = setting.GetSetting(Setting.barin_image, $"{Name}.nni");
-            if (File.Exists(barin_image) && rebuild != true)
+
+            NeuralNetworkImage[] images;
+            if (!setting.Progress.Rebuild)
             {
-                Debugger.Console.WriteCommitLine("loading brain ... ");
-                Brain = new Brain(NeuralNetworkSerializer.Restore(barin_image));
+                string[] file_names = Directory.GetFiles(setting.Brain.ImagesPath, $"{Name}-*.nni");
+                if (file_names.Length == 0) images = null;
+                else
+                {
+                    Debugger.Console.WriteCommitLine("loading brain ... ");
+                    images = new NeuralNetworkImage[file_names.Length];
+
+                    var tasks = new Task[file_names.Length];
+                    for (int b = 0; b < file_names.Length; b++)
+                        tasks[b] = Task.Run(() =>
+                        {
+                            images[b] = NeuralNetworkSerializer.Restore(file_names[b]);
+                        });
+                    Task.WaitAll(tasks);
+                }
             }
             else
             {
-                Offset = 0;
-                Debugger.Console.WriteCommitLine("new brain ... ");
-                Brain = new Brain(BrainInitializer());
+                images = null;
+                setting.Progress.Rebuild = false;
             }
 
-            if (rebuild == true) setting.SetSetting(Setting.rebuild, false);
+            if (images == null)
+            {
+                Offset = 0;
+                Debugger.Console.WriteCommitLine("new brain ... ");
+                images = BrainInitializer();
+            }
 
-            Brain.LearningFactor = setting.GetSetting(Setting.learning_factor, 0.1);
-            Brain.CertaintyFactor = setting.GetSetting(Setting.certainty_factor, 0.001);
-            Brain.DropoutFactor = setting.GetSetting(Setting.dropout_factor, 0.2);
+            foreach (var image in images)
+                BrainAdd(new Brain(image)
+                {
+                    LearningFactor = setting.Brain.LearningFactor,
+                    CertaintyFactor = setting.Brain.CertaintyFactor,
+                    DropoutFactor = setting.Brain.DropoutFactor,
+                });
         }
-        protected abstract NeuralNetworkImage BrainInitializer();
+        protected abstract NeuralNetworkImage[] BrainInitializer();
         protected override void OnError(Exception ex)
         {
             Debugger.Console.CommitLine();
@@ -75,13 +96,18 @@ namespace Photon.NeuralNetwork.Opertat.Debug
             Debugger.Console.CommitLine();
             Debugger.Console.WriteCommitLine("finishing ... ");
 
-            setting.SetSetting(Setting.current_offset, Offset);
+            setting.Progress.CurrentOffset = Offset;
 
             Debugger.Console.WriteCommitLine("storing brain's image ... ");
-            NeuralNetworkSerializer.Serialize(
-                Brain.Image(),
-                setting.GetSetting(Setting.barin_image, $"{Name}.nni")
-            );
+            string image_file_name = $"{Name}-?.nni";
+            var tasks = new Task[Brains.Count];
+            for (int b = 0; b < Brains.Count; b++)
+                tasks[b] = Task.Run(() =>
+                    NeuralNetworkSerializer.Serialize(
+                        Brains[b].Image(),
+                        setting.Brain.ImagesPath + image_file_name.Replace("?", b.ToString())
+                    ));
+            Task.WaitAll(tasks);
 
             setting.Save();
             Disposed = true;

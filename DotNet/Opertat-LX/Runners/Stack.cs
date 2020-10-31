@@ -11,6 +11,7 @@ using System.Threading;
 using Newtonsoft.Json.Linq;
 using Photon.NeuralNetwork.Opertat.Implement;
 using Photon.NeuralNetwork.Opertat.Debug.Config;
+using System.Runtime.InteropServices.WindowsRuntime;
 
 namespace Photon.NeuralNetwork.Opertat.Debug
 {
@@ -35,8 +36,7 @@ namespace Photon.NeuralNetwork.Opertat.Debug
             {
                 sqlite = new SqlCommand
                 {
-                    Connection =
-                        new SqlConnection(setting.GetSetting(Setting.data_provider, ""))
+                    Connection = new SqlConnection(setting.DataProvider)
                 };
                 sqlite.Connection.Open();
 
@@ -57,19 +57,25 @@ namespace Photon.NeuralNetwork.Opertat.Debug
                 sqlite.CommandType = CommandType.StoredProcedure;
             }
         }
-        protected override NeuralNetworkImage BrainInitializer()
+        protected override NeuralNetworkImage[] BrainInitializer()
         {
-            var model_info = setting[Setting.model, null];
-            var conduction = model_info.GetSetting(Setting.model_conduction, "soft-relu");
-            var layers = model_info.GetSettingArray(Setting.model_layers, 100, 100);
+            var layers = setting.Brain.Layers.NodesCount ??
+                throw new Exception("the default layer is not set.");
 
-            return new NeuralNetworkInitializer()
-                .SetInputSize(SIGNAL_COUNT_TOTAL)
-                .AddLayer(conduction == "soft-relu" ? (IConduction)new SoftReLU() : new ReLU(), layers)
-                .AddLayer(new Sigmoind(), RESULT_COUNT)
-                .SetCorrection(new ErrorStack(RESULT_COUNT))
-                .SetDataConvertor(new DataRange(5, 0), new DataRange(10, 5))
-                .Image();
+            var images = new NeuralNetworkImage[setting.Brain.ImagesCount];
+            var conduction = setting.Brain.Layers.Conduction == "soft-relu" ?
+                (IConduction)new SoftReLU() : new ReLU();
+
+            for (int i = 0; i < images.Length; i++)
+                images[i] = new NeuralNetworkInitializer()
+                    .SetInputSize(SIGNAL_COUNT_TOTAL)
+                    .AddLayer(conduction, layers)
+                    .AddLayer(new Sigmoind(), RESULT_COUNT)
+                    .SetCorrection(new ErrorStack(RESULT_COUNT))
+                    .SetDataConvertor(new DataRange(5, 0), new DataRange(10, 5))
+                    .Image();
+
+            return images;
         }
         protected override Task<Record> PrepareNextData(uint offset)
         {
@@ -133,8 +139,10 @@ namespace Photon.NeuralNetwork.Opertat.Debug
 
         public Stack()
         {
-            ReflectFinished = (flash, record, duration) =>
+            ReflectFinished = (image_index, flash, record, duration) =>
             {
+                if (image_index != 0) return;
+
                 if (last_instrument != (uint)record.extra)
                 {
                     last_instrument = (uint)record.extra;
@@ -183,7 +191,7 @@ namespace Photon.NeuralNetwork.Opertat.Debug
         private static readonly int SIGNAL_COUNT_TOTAL;
         private static readonly int RECORDS_COUNT_BASICAL;
         private static readonly int RECORDS_COUNT_TOTAL;
-        
+
         static Stack()
         {
             SIGNAL_COUNT_BASICAL = SIGNAL_STEP_COUNT +
@@ -207,5 +215,13 @@ group by	InstrumentID
 having      count(*) > {RECORDS_COUNT_BASICAL}
 order by	Amount desc";
         #endregion
+
+        class DataCache
+        {
+            private DataCache()
+            {
+
+            }
+        }
     }
 }
