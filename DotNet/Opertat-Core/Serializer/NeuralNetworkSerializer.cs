@@ -62,8 +62,8 @@ namespace Photon.NeuralNetwork.Opertat
             // 3: read error function
             var error = function.RestoreIErrorFunction();
 
-            // 4: read regulazor function
-            var regulazation = function.RestoreIRegularization();
+            // 4: read regularizer function
+            var regularization = function.RestoreIRegularization();
 
             // 5: read data intput convertor
             var input_convertor = function.RestoreIDataConvertor();
@@ -71,7 +71,7 @@ namespace Photon.NeuralNetwork.Opertat
             // 6: read data output convertor
             var output_convertor = function.RestoreIDataConvertor();
 
-            return new NeuralNetworkImage(layers, error, input_convertor, output_convertor, regulazation);
+            return new NeuralNetworkImage(layers, error, input_convertor, output_convertor, regularization);
         }
         private static NeuralNetworkImage RestoreVer2(FileStream stream)
         {
@@ -84,7 +84,7 @@ namespace Photon.NeuralNetwork.Opertat
             // 3: read error function
             var error = function.RestoreIErrorFunction();
 
-            // regulazation not supported in this version
+            // regularization not supported in this version
 
             // 4: read data intput convertor
             var input_convertor = function.RestoreIDataConvertor();
