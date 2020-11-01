@@ -103,11 +103,15 @@ namespace Photon.NeuralNetwork.Opertat.Debug
             Debugger.Console.WriteCommitLine("storing brain's image ... ");
             string image_file_name = $"{Name}-?.nni";
 
-            Directory.CreateDirectory(setting.Brain.ImagesPath);
-            Parallel.ForEach(Brains.Keys, (brain, state, index) =>
-                NeuralNetworkSerializer.Serialize(
-                   brain.Image(),
-                   setting.Brain.ImagesPath + image_file_name.Replace("?", (index + 1).ToString())));
+            if (Brains.Count > 0)
+            {
+                if (!string.IsNullOrWhiteSpace(setting.Brain.ImagesPath))
+                    Directory.CreateDirectory(setting.Brain.ImagesPath);
+                Parallel.ForEach(Brains.Keys, (brain, state, index) =>
+                    NeuralNetworkSerializer.Serialize(
+                       brain.Image(),
+                       setting.Brain.ImagesPath + image_file_name.Replace("?", (index + 1).ToString())));
+            }
 
             setting.Save();
             Disposed = true;
