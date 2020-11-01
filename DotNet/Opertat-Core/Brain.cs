@@ -101,13 +101,13 @@ namespace Photon.NeuralNetwork.Opertat
             try
             {
                 // dropout
-                if (DropoutFactor > 0)
+                /*if (DropoutFactor > 0)
                 {
                     var nodes = new HashSet<int>();
                     var last = layers[^1];
                     foreach (var layer in layers)
                         layer.Droupout(last == layer ? 0 : DropoutFactor, ref nodes);
-                }
+                }*/
 
                 // forward-propagation
                 ForwardPropagation(flash, ref signals);
@@ -153,13 +153,13 @@ namespace Photon.NeuralNetwork.Opertat
             finally
             {
                 // ralease dropout
-                if (DropoutFactor > 0)
+                /*if (DropoutFactor > 0)
                 {
                     LearningFactor = lr;
                     var nodes = new HashSet<int>();
                     foreach (var layer in layers)
                         layer.DroupoutRelease(ref nodes);
-                }
+                }*/
 
                 // release lock
                 locker.ReleaseWriterLock();
