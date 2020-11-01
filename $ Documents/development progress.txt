@@ -1,3 +1,4 @@
+last record problem
+implement validation to break training
 test dropout
 test regularization (L1 and L2)
-implement validation to break training

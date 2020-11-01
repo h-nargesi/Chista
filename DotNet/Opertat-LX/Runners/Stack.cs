@@ -155,17 +155,16 @@ namespace Photon.NeuralNetwork.Opertat.Debug
             double accuracy = 0, result = 0;
             foreach(var reuslt in Brains.Values)
             {
-                accuracy += reuslt.accuracy;
+                accuracy = Math.Max(reuslt.accuracy, accuracy);
                 result += reuslt.predict.ResultSignals[0];
             }
-            accuracy /= Brains.Count;
             result /= Brains.Count;
 
             print = $"#{Offset / Count},{Offset % Count}:\r\n\t" +
                 $"instrument={record.extra}\t" +
                 $"output={Print(record.result[0], 3):R}\t" +
                 $"predict,avg={Print(result, 3):R}\t" +
-                $"accuracy,avg={Print(accuracy * 100, 4):R}\r\n\t" +
+                $"accuracy,best={Print(accuracy * 100, 4):R}\r\n\t" +
                 $"data loading={GetDurationString(record.duration.Value)}\r\n\t" +
                 $"prediction={GetDurationString(duration)}";
 

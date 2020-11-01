@@ -13,11 +13,24 @@ namespace Photon.NeuralNetwork.Opertat
         private readonly Dictionary<Brain, (double accuracy, NeuralNetworkFlash predict)> brains =
             new Dictionary<Brain, (double accuracy, NeuralNetworkFlash predict)>();
 
+        #region Progress Control
         public uint Offset { get; set; }
-        public uint Count { get; set; }
+        public uint TraingingCount { get; set; }
+        public uint ValidationCount { get; set; }
+        public uint TotalCount => TraingingCount + ValidationCount;
         public uint Epoch { get; set; }
         public uint Tries { get; set; }
+        private (uint, bool) OffsetCurrent(uint next)
+        {
+            next = (Offset + next) % TotalCount;
+            bool is_training_process = next < TraingingCount;
+            if (!is_training_process) next -= TraingingCount;
 
+            return (next, is_training_process);
+        }
+        #endregion
+
+        #region Brain Management
         public IReadOnlyDictionary<Brain, (double accuracy, NeuralNetworkFlash predict)> Brains => brains;
         public void BrainAdd(Brain brain)
         {
@@ -39,11 +52,19 @@ namespace Photon.NeuralNetwork.Opertat
                     }
             }
         }
+        #endregion
 
+        #region Abstract Stuff
         protected abstract void OnInitialize();
-        protected abstract Task<Record> PrepareNextData(uint offset);
+        protected abstract Task<Record> PrepareNextData(uint offset, bool training);
         protected abstract void ReflectFinished(Record record, long duration);
         protected abstract void OnError(Exception ex);
+        #endregion
+
+        #region Best Validation
+        // TODO: store best validation in memory
+        // TODO: restore best validation in dispose
+        #endregion
 
         public Task Start()
         {
@@ -53,17 +74,19 @@ namespace Photon.NeuralNetwork.Opertat
                 {
                     // initialize by developer
                     OnInitialize();
+
                     // variables
+                    var (offest, is_training) = OffsetCurrent(0);
                     var record_count = 0;
                     var accuracy_total = new Dictionary<Brain, double>();
-                    var record_geter = PrepareNextData(Offset % Count);
+                    var record_geter = PrepareNextData(offest, is_training);
 
                     // initial total accuracy for each brain
                     foreach (var brain in brains.Keys)
                         accuracy_total.Add(brain, 0);
 
                     // training loop
-                    while (Offset / Count <= Epoch)
+                    while (Offset / TotalCount <= Epoch)
                     {
                         if (stoping) return;
 
@@ -72,9 +95,10 @@ namespace Photon.NeuralNetwork.Opertat
                         var record = record_geter.Result;
 
                         // fetch next record
-                        record_geter = PrepareNextData((Offset + 1) % Count);
+                        var (next, next_is_training) = OffsetCurrent(1);
+                        record_geter = PrepareNextData(next, next_is_training);
 
-                        if (Offset % Count == 0)
+                        if (offest == 0)
                         {
                             record_count = 0;
                             accuracy_total.Clear();
@@ -89,28 +113,21 @@ namespace Photon.NeuralNetwork.Opertat
                             var start_time = DateTime.Now.Ticks;
 
                             lock (brains)
-                                Parallel.ForEach(brains.Keys.ToArray(), (brain, state, index) =>
-                                {
-                                    NeuralNetworkFlash flash = null;
+                                _ = Parallel.ForEach(brains.Keys.ToArray(), (brain, state, index) =>
+                                  {
+                                      NeuralNetworkFlash flash = null;
 
-                                    var i = 1;
-                                    do
-                                    {
-                                        if (stoping) return;
+                                      var i = 1;
+                                      if (!record.training) flash = brain.Test(record.data);
+                                      else do { flash = brain.Train(record.data, record.result); }
+                                      while (!stoping && ++i < Tries && flash.Accuracy < 1);
 
-                                        // training
-                                        flash = brain.Train(record.data, record.result);
-                                    }
-                                    while (++i < Tries && flash.Accuracy < 1);
+                                      // total accuracy
+                                      accuracy_total[brain] += flash.Accuracy;
 
-                                    // total accuracy
-                                    accuracy_total[brain] += flash.Accuracy;
-
-                                    // report_brain
-                                    brains[brain] = (
-                                        (accuracy_total[brain] + flash.Accuracy) / record_count,
-                                        flash);
-                                });
+                                      // report_brain
+                                      brains[brain] = (accuracy_total[brain] / record_count, flash);
+                                  });
 
                             // call event
                             if (stoping) return;
@@ -119,6 +136,7 @@ namespace Photon.NeuralNetwork.Opertat
 
                         // next offset
                         Offset++;
+                        offest = next;
                     }
                     Dispose();
                 }
@@ -133,12 +151,15 @@ namespace Photon.NeuralNetwork.Opertat
 
         protected class Record
         {
+            public readonly bool training;
             public readonly double[] data, result;
             public readonly object extra;
             public readonly long? duration;
 
-            public Record(double[] data, double[] result, object extra = null, long? duration = null)
+            public Record(bool training, double[] data, double[] result, 
+                object extra = null, long? duration = null)
             {
+                this.training = training;
                 this.data = data;
                 this.result = result;
                 this.extra = extra;
