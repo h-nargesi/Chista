@@ -10,7 +10,7 @@ namespace Photon.NeuralNetwork.Opertat
     {
         public Matrix<double> Regularize(Matrix<double> synapse, double certainty)
         {
-            return Matrix<double>.Build.DenseOfArray(new double[synapse.RowCount, synapse.ColumnCount]) + 1;
+            return synapse.PointwiseSign() * certainty;
         }
 
         public override string ToString()
