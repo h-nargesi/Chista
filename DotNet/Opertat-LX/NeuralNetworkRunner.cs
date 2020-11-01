@@ -42,20 +42,20 @@ namespace Photon.NeuralNetwork.Opertat.Debug
             {
                 string path = setting.Brain.ImagesPath;
                 if (string.IsNullOrWhiteSpace(path)) path = Directory.GetCurrentDirectory();
-                string[] file_names = Directory.GetFiles(path, $"{Name}-*.nni");
-                if (file_names.Length == 0) images = null;
+                else path = path.Trim();
+
+                string[] file_names;
+                if (!Directory.Exists(path)) file_names = null;
+                else file_names = Directory.GetFiles(path, $"{Name}-*.nni");
+
+                if (file_names == null || file_names.Length == 0) images = null;
                 else
                 {
                     Debugger.Console.WriteCommitLine("loading brain ... ");
                     images = new NeuralNetworkImage[file_names.Length];
 
-                    var tasks = new Task[file_names.Length];
-                    for (int b = 0; b < file_names.Length; b++)
-                        tasks[b] = Task.Run(() =>
-                        {
-                            images[b] = NeuralNetworkSerializer.Restore(file_names[b]);
-                        });
-                    Task.WaitAll(tasks);
+                    Parallel.ForEach(file_names, (file, state, index) =>
+                        images[index] = NeuralNetworkSerializer.Restore(file));
                 }
             }
             else
@@ -102,14 +102,12 @@ namespace Photon.NeuralNetwork.Opertat.Debug
 
             Debugger.Console.WriteCommitLine("storing brain's image ... ");
             string image_file_name = $"{Name}-?.nni";
-            var tasks = new Task[Brains.Count];
-            for (int b = 0; b < Brains.Count; b++)
-                tasks[b] = Task.Run(() =>
-                    NeuralNetworkSerializer.Serialize(
-                        Brains[b].Image(),
-                        setting.Brain.ImagesPath + image_file_name.Replace("?", b.ToString())
-                    ));
-            Task.WaitAll(tasks);
+
+            Directory.CreateDirectory(setting.Brain.ImagesPath);
+            Parallel.ForEach(Brains.Keys, (brain, state, index) =>
+                NeuralNetworkSerializer.Serialize(
+                   brain.Image(),
+                   setting.Brain.ImagesPath + image_file_name.Replace("?", (index + 1).ToString())));
 
             setting.Save();
             Disposed = true;

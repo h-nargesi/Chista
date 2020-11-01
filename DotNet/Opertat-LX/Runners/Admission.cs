@@ -12,20 +12,26 @@ namespace Photon.NeuralNetwork.Opertat.Debug
 {
     public class Admission : NeuralNetworkRunner
     {
-        private string print = "";
-        public const string NAME = "adm";
-        private readonly Random random = new Random(DateTime.Now.Millisecond);
         public int Slowness { get; set; } = 200;
         public override string Name => NAME;
+
+        public const string NAME = "adm";
         private const int SignalRange = 100, SignalHeight = 0;
+
+        private Brain brain;
+        private string print = "";
+        private readonly Random random = new Random(DateTime.Now.Millisecond);
 
         protected override void OnInitialize()
         {
             setting.Brain.ImagesPathDefault = "";
             base.OnInitialize();
 
+            brain = null;
+            foreach (var b in Brains.Keys) brain = b;
+
             string print = null;
-            var image = Brains[0].Image();
+            var image = brain.Image();
             for (var i = 0; i < image.layers.Length; i++)
             {
                 print += Print(image.layers[i].Bias.ToArray());
@@ -42,8 +48,12 @@ namespace Photon.NeuralNetwork.Opertat.Debug
         protected override NeuralNetworkImage[] BrainInitializer()
         {
             var conduction = setting.Brain.Layers.Conduction;
-            var layers = setting.Brain.Layers.NodesCount ??
+            var layers = setting.Brain.Layers.NodesCount;
+            if (layers == null || layers.Length == 0)
+            {
+                setting.Brain.Layers.NodesCount = new int[0];
                 throw new Exception("the default layer's node count is not set.");
+            }
 
             var image = new NeuralNetworkInitializer()
                 .SetInputSize(2)
@@ -73,6 +83,37 @@ namespace Photon.NeuralNetwork.Opertat.Debug
 
             return Task.FromResult(new Record(data, result));
         }
+        protected override void ReflectFinished(Record record, long duration)
+        {
+            if (Offset % Count == 0)
+                Debugger.Console.CommitLine();
+            else
+            {
+                print = Regex.Replace(print, "[^ \t\r\n]", " ");
+                Debugger.Console.WriteWord(print);
+            }
+
+            var (accuracy, predict) = Brains[brain];
+
+            print = $"#{Offset} = ";
+            print += $"result:{Print(record.result, 6)}\t";
+            print += $"output:{Print(predict.ResultSignals, 6)}\t";
+            print += $"accuracy:{Print(accuracy * 100, 2)}\t";
+            print += $"error:{Print(brain.Errors(predict, record.result), null)}\r\n";
+
+            /*var image = Brain.Image();
+            for (var i = 0; i < image.layers.Length; i++)
+            {
+                print += Print(image.layers[i].Bias.ToArray());
+                print += Print(image.layers[i].Synapse.ToArray());
+                print += "\r\n";
+            }*/
+
+            Debugger.Console.WriteWord(print[0..^2]);
+
+            if (Slowness > 1)
+                Thread.Sleep(Slowness - 1);
+        }
         protected override void UserControl()
         {
             Debugger.Console.WriteCommitLine("press escape key to exit.");
@@ -97,39 +138,6 @@ namespace Photon.NeuralNetwork.Opertat.Debug
                 }
             }
             while (!Disposed);
-        }
-
-        public Admission()
-        {
-            ReflectFinished = (image_index, flash, record, timing) =>
-            {
-                if (Offset % Count == 0)
-                    Debugger.Console.CommitLine();
-                else
-                {
-                    print = Regex.Replace(print, "[^ \t\r\n]", " ");
-                    Debugger.Console.WriteWord(print);
-                }
-
-                print = $"#{Offset} = ";
-                print += $"result:{Print(record.result, 6)}\t";
-                print += $"output:{Print(flash.ResultSignals, 6)}\t";
-                print += $"accuracy:{Print(Accuracy * 100, 2)}\t";
-                print += $"error:{Print(Brains[0].Errors(flash, record.result), null)}\r\n";
-
-                /*var image = Brain.Image();
-                for (var i = 0; i < image.layers.Length; i++)
-                {
-                    print += Print(image.layers[i].Bias.ToArray());
-                    print += Print(image.layers[i].Synapse.ToArray());
-                    print += "\r\n";
-                }*/
-
-                Debugger.Console.WriteWord(print[0..^2]);
-
-                if (Slowness > 1)
-                    Thread.Sleep(Slowness - 1);
-            };
         }
 
         private double Sigmoind(double input)

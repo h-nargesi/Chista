@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Runtime.CompilerServices;
 
 namespace Photon.NeuralNetwork.Opertat.Implement
 {
@@ -166,6 +167,7 @@ namespace Photon.NeuralNetwork.Opertat.Implement
 
         private static readonly Dictionary<ushort, IConduction> all_conductions =
             new Dictionary<ushort, IConduction>();
+
         public static ushort EnCodeIConduction(IConduction conduction)
         {
             return conduction switch
@@ -177,6 +179,7 @@ namespace Photon.NeuralNetwork.Opertat.Implement
                     nameof(conduction), "this type of IConduction is not registered."),
             };
         }
+        [MethodImpl(MethodImplOptions.Synchronized)]
         public static IConduction DecodeIConduction(ushort value)
         {
             if (all_conductions.ContainsKey(value))

@@ -93,21 +93,17 @@ namespace Photon.NeuralNetwork.Opertat.Debug
 
             return record.result;
         }
-
-        public Dictionary()
+        protected override void ReflectFinished(Record record, long duration)
         {
-            ReflectFinished = (image_index, flash, record, timing) =>
+            if (Offset % Count == 0)
             {
-                if (image_index == 0 && Offset % Count == 0)
-                {
-                    print = "";
-                    if (record == null) return;
+                print = "";
+                if (record == null) return;
 
-                    var extra = record.extra as string[];
-                    Debugger.Console.CommitLine();
-                    Debugger.Console.WriteWord($"{Offset}: {extra[0]}");
-                }
-            };
+                var extra = record.extra as string[];
+                Debugger.Console.CommitLine();
+                Debugger.Console.WriteWord($"{Offset}: {extra[0]}");
+            }
         }
 
         public void IgnoreUnnecessary(double[] answer, double[] result)

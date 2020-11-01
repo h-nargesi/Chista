@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -8,34 +9,40 @@ namespace Photon.NeuralNetwork.Opertat
 {
     public abstract class Instructor : IDisposable
     {
-        private readonly List<Brain> brains = new List<Brain>();
-        private readonly object accuracy_lock = new object();
         private bool stoping = false;
+        private readonly Dictionary<Brain, (double accuracy, NeuralNetworkFlash predict)> brains =
+            new Dictionary<Brain, (double accuracy, NeuralNetworkFlash predict)>();
 
         public uint Offset { get; set; }
         public uint Count { get; set; }
         public uint Epoch { get; set; }
         public uint Tries { get; set; }
-        public double Accuracy { get; private set; }
-        public IReadOnlyList<Brain> Brains => brains;
+
+        public IReadOnlyDictionary<Brain, (double accuracy, NeuralNetworkFlash predict)> Brains => brains;
         public void BrainAdd(Brain brain)
         {
-            lock (brains)
-                brains.Add(brain);
+            lock (brains) brains.Add(brain, (0, null));
         }
         public void BrainRemove(Brain brain)
         {
-            lock (brains)
-                brains.Remove(brain);
+            lock (brains) brains.Remove(brain);
         }
         public void BrainRemove(int index)
         {
             lock (brains)
-                brains.RemoveAt(index);
+            {
+                foreach (Brain brain in brains.Keys)
+                    if (index-- == 0)
+                    {
+                        brains.Remove(brain);
+                        break;
+                    }
+            }
         }
 
         protected abstract void OnInitialize();
         protected abstract Task<Record> PrepareNextData(uint offset);
+        protected abstract void ReflectFinished(Record record, long duration);
         protected abstract void OnError(Exception ex);
 
         public Task Start()
@@ -47,10 +54,14 @@ namespace Photon.NeuralNetwork.Opertat
                     // initialize by developer
                     OnInitialize();
                     // variables
-                    var accuracy_total = 0D;
                     var record_count = 0;
+                    var accuracy_total = new Dictionary<Brain, double>();
                     var record_geter = PrepareNextData(Offset % Count);
-                    var start_time = 0L;
+
+                    // initial total accuracy for each brain
+                    foreach (var brain in brains.Keys)
+                        accuracy_total.Add(brain, 0);
+
                     // training loop
                     while (Offset / Count <= Epoch)
                     {
@@ -65,51 +76,45 @@ namespace Photon.NeuralNetwork.Opertat
 
                         if (Offset % Count == 0)
                         {
-                            accuracy_total = 0;
                             record_count = 0;
+                            accuracy_total.Clear();
+                            foreach (var brain in brains.Keys)
+                                accuracy_total.Add(brain, 0);
                         }
-                        double accuracy_last = 0;
 
                         if (record != null && record.data != null && record.result != null)
                         {
-                            int t = 0;
-                            Task[] tasks = new Task[brains.Count];
-                            NeuralNetworkFlash predict = null;
-                            if (ReflectFinished != null) start_time = DateTime.Now.Ticks;
+                            // reporting vriables
+                            record_count++;
+                            var start_time = DateTime.Now.Ticks;
 
                             lock (brains)
-                                foreach (Brain brain in brains)
-                                    tasks[t++] = Task.Run(() =>
+                                Parallel.ForEach(brains.Keys.ToArray(), (brain, state, index) =>
+                                {
+                                    NeuralNetworkFlash flash = null;
+
+                                    var i = 1;
+                                    do
                                     {
-                                        var i = 1;
-                                        do
-                                        {
-                                            if (stoping) return;
+                                        if (stoping) return;
 
-                                            // training
-                                            var predict = brain.Train(record.data, record.result);
+                                        // training
+                                        flash = brain.Train(record.data, record.result);
+                                    }
+                                    while (++i < Tries && flash.Accuracy < 1);
 
-                                            // check accuracy and error
-                                            lock (accuracy_lock)
-                                            {
-                                                accuracy_last = predict.Accuracy;
-                                                Accuracy =
-                                                    (accuracy_total + accuracy_last) /
-                                                    (record_count + 1);
-                                            }
-                                        }
-                                        while (++i < Tries && accuracy_last != 1);
-                                    });
-                            Task.WaitAll(tasks);
+                                    // total accuracy
+                                    accuracy_total[brain] += flash.Accuracy;
+
+                                    // report_brain
+                                    brains[brain] = (
+                                        (accuracy_total[brain] + flash.Accuracy) / record_count,
+                                        flash);
+                                });
 
                             // call event
-                            if (ReflectFinished != null)
-                                if (stoping) return;
-                                else ReflectFinished.Invoke(
-                                    predict, record, DateTime.Now.Ticks - start_time);
-
-                            record_count++;
-                            accuracy_total += predict.Accuracy;
+                            if (stoping) return;
+                            ReflectFinished(record, DateTime.Now.Ticks - start_time);
                         }
 
                         // next offset
@@ -125,8 +130,6 @@ namespace Photon.NeuralNetwork.Opertat
         {
             stoping = true;
         }
-
-        protected Action<NeuralNetworkFlash, Record, long> ReflectFinished { get; set; }
 
         protected class Record
         {

@@ -20,7 +20,6 @@ namespace Photon.NeuralNetwork.Opertat.Debug
         public const string NAME = "stk";
         public override string Name => NAME;
 
-
         private int company_step = 0;
         private uint last_instrument = 0;
         private List<(uint cumulative, uint company_id)> cumulative_frequency;
@@ -59,8 +58,12 @@ namespace Photon.NeuralNetwork.Opertat.Debug
         }
         protected override NeuralNetworkImage[] BrainInitializer()
         {
-            var layers = setting.Brain.Layers.NodesCount ??
+            var layers = setting.Brain.Layers.NodesCount;
+            if (layers == null || layers.Length == 0)
+            {
+                setting.Brain.Layers.NodesCount = new int[0];
                 throw new Exception("the default layer's node count is not set.");
+            }
 
             var images = new NeuralNetworkImage[setting.Brain.ImagesCount];
             var conduction = setting.Brain.Layers.Conduction == "soft-relu" ?
@@ -136,34 +139,37 @@ namespace Photon.NeuralNetwork.Opertat.Debug
                 else if (cum_left > offset) company_step /= 2;
             }
         }
-
-        public Stack()
+        protected override void ReflectFinished(Record record, long duration)
         {
-            ReflectFinished = (image_index, flash, record, duration) =>
+            if (last_instrument != (uint)record.extra)
             {
-                if (image_index != 0) return;
-
-                if (last_instrument != (uint)record.extra)
-                {
-                    last_instrument = (uint)record.extra;
-                    Debugger.Console.CommitLine();
-                }
-                else
-                {
-                    print = Regex.Replace(print, "[^ \t\r\n]", " ");
-                    Debugger.Console.WriteWord(print);
-                }
-
-                print = $"#{Offset / Count},{Offset % Count}:\r\n\t" +
-                    $"instrument={record.extra}\t" +
-                    $"output={Print(record.result[0], 3):R}\t" +
-                    $"predict={Print(flash.ResultSignals[0], 3):R}\t" +
-                    $"accuracy={Print(Accuracy * 100, 4):R}\r\n\t" +
-                    $"data loading={GetDurationString(record.duration.Value)}\r\n\t" +
-                    $"prediction={GetDurationString(duration)}";
-
+                last_instrument = (uint)record.extra;
+                Debugger.Console.CommitLine();
+            }
+            else
+            {
+                print = Regex.Replace(print, "[^ \t\r\n]", " ");
                 Debugger.Console.WriteWord(print);
-            };
+            }
+
+            double accuracy = 0, result = 0;
+            foreach(var reuslt in Brains.Values)
+            {
+                accuracy += reuslt.accuracy;
+                result += reuslt.predict.ResultSignals[0];
+            }
+            accuracy /= Brains.Count;
+            result /= Brains.Count;
+
+            print = $"#{Offset / Count},{Offset % Count}:\r\n\t" +
+                $"instrument={record.extra}\t" +
+                $"output={Print(record.result[0], 3):R}\t" +
+                $"predict,avg={Print(result, 3):R}\t" +
+                $"accuracy,avg={Print(accuracy * 100, 4):R}\r\n\t" +
+                $"data loading={GetDurationString(record.duration.Value)}\r\n\t" +
+                $"prediction={GetDurationString(duration)}";
+
+            Debugger.Console.WriteWord(print);
         }
 
         public override void Dispose()
@@ -190,7 +196,6 @@ namespace Photon.NeuralNetwork.Opertat.Debug
         private static readonly int SIGNAL_COUNT_LAST_YEARS;
         private static readonly int SIGNAL_COUNT_TOTAL;
         private static readonly int RECORDS_COUNT_BASICAL;
-        private static readonly int RECORDS_COUNT_TOTAL;
 
         static Stack()
         {
@@ -204,7 +209,6 @@ namespace Photon.NeuralNetwork.Opertat.Debug
             for (int y = 1; y <= YEARS_COUNT;)
                 SIGNAL_COUNT_LAST_YEARS += (int)Math.Ceiling(SIGNAL_STEP_LAST_YEARS / (double)(++y));
             SIGNAL_COUNT_TOTAL = SIGNAL_COUNT_BASICAL + SIGNAL_COUNT_LAST_YEARS;
-            RECORDS_COUNT_TOTAL = RESULT_COUNT + SIGNAL_COUNT_TOTAL;
         }
 
         private readonly static string sql_counting = $@"
