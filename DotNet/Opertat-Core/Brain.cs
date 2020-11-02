@@ -17,9 +17,9 @@ namespace Photon.NeuralNetwork.Opertat
         private readonly IDataConvertor in_cvrt, out_cvrt;
         private readonly IRegularization regularization;
 
-        public double LearningFactor { get; set; } = 1;
+        public double LearningFactor { get; set; } = 0.01;
         public double CertaintyFactor { get; set; } = 0.001;
-        public double DropoutFactor { get; set; } = 0.5;
+        public double DropoutFactor { get; set; } = 0.4;
 
         public Brain(NeuralNetworkImage image)
         {
@@ -137,7 +137,7 @@ namespace Photon.NeuralNetwork.Opertat
 
             // it's for multi-thread using
             locker.AcquireWriterLock(lock_time_out);
-            double lr = LearningFactor;
+            // double lr = LearningFactor;
             try
             {
                 // calculate total error of network result
