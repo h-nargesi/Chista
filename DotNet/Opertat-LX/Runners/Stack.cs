@@ -42,15 +42,20 @@ namespace Photon.NeuralNetwork.Opertat.Debug
                 sqlite.CommandText = sql_counting;
                 using var reader = sqlite.ExecuteReader();
 
-                Count = 0;
+                TraingingCount = 0; ValidationCount = 0;
                 cumulative_frequency = new List<(uint cumulative, uint company_id)>();
                 while (reader.Read())
                 {
-                    cumulative_frequency.Add((Count, (uint)(int)reader[0]));
-                    Count += (uint)(int)reader[1];
+                    cumulative_frequency.Add((TraingingCount, (uint)(int)reader[0]));
+                    TraingingCount += (uint)(int)reader[1];
+                    ValidationCount += (uint)(int)reader[2];
                 }
                 if (cumulative_frequency.Count == 0)
                     throw new Exception("The data set is empty.");
+
+                // TODO: test validation
+                // ignore validation
+                ValidationCount = 0;
 
                 sqlite.CommandText = "GetTrade";
                 sqlite.CommandType = CommandType.StoredProcedure;
@@ -80,7 +85,7 @@ namespace Photon.NeuralNetwork.Opertat.Debug
 
             return images;
         }
-        protected override Task<Record> PrepareNextData(uint offset)
+        protected override Task<Record> PrepareNextData(uint offset, bool is_training)
         {
             return Task.Run(() =>
             {
@@ -109,7 +114,7 @@ namespace Photon.NeuralNetwork.Opertat.Debug
                         }
                     }
 
-                return new Record(signal, result, company_id, DateTime.Now.Ticks - start_time);
+                return new Record(is_training, signal, result, company_id, DateTime.Now.Ticks - start_time);
             });
         }
         private (uint offset, uint company_id) FindCompany(uint offset)
@@ -141,7 +146,7 @@ namespace Photon.NeuralNetwork.Opertat.Debug
         }
         protected override void ReflectFinished(Record record, long duration)
         {
-            if (last_instrument != (uint)record.extra)
+            if (record.training && last_instrument != (uint)record.extra)
             {
                 last_instrument = (uint)record.extra;
                 Debugger.Console.CommitLine();
@@ -160,8 +165,9 @@ namespace Photon.NeuralNetwork.Opertat.Debug
             }
             result /= Brains.Count;
 
-            print = $"#{Offset / Count},{Offset % Count}:\r\n\t" +
-                $"instrument={record.extra}\t" +
+            print = $"#{Offset / TotalCount},{Offset % TotalCount}," +
+                $"{(record.training ? "training" : "validation")}:\r\n\t" +
+                $"instm={record.extra}\t" +
                 $"output={Print(record.result[0], 3):R}\t" +
                 $"predict,avg={Print(result, 3):R}\t" +
                 $"accuracy,best={Print(accuracy * 100, 4):R}\r\n\t" +
@@ -211,7 +217,9 @@ namespace Photon.NeuralNetwork.Opertat.Debug
         }
 
         private readonly static string sql_counting = $@"
-select		InstrumentID, sum(iif(RecordType = 'X', 1, 0)) - {RECORDS_COUNT_BASICAL} as Amount
+select		InstrumentID,
+            sum(iif(RecordType = 'X', 1, 0)) - {RECORDS_COUNT_BASICAL} as TrainingCount,
+            sum(iif(RecordType = 'V', 1, 0)) - {RECORDS_COUNT_BASICAL} as ValidationCount
 from		Trade
 where		RecordType is not null
 group by	InstrumentID
@@ -219,12 +227,5 @@ having      count(*) > {RECORDS_COUNT_BASICAL}
 order by	Amount desc";
         #endregion
 
-        class DataCache
-        {
-            private DataCache()
-            {
-
-            }
-        }
     }
 }

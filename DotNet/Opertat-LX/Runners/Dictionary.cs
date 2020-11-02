@@ -26,8 +26,10 @@ namespace Photon.NeuralNetwork.Opertat.Debug
 
             sqlite.CommandText = "select count(*) from En_Pr";
             using var reader = sqlite.ExecuteReader();
-            if (reader.Read()) Count = (uint)(long)reader[0];
+            if (reader.Read()) TraingingCount = (uint)(long)reader[0];
             else throw new Exception("The unkown count.");
+
+            ValidationCount = 0;
         }
         protected override NeuralNetworkImage[] BrainInitializer()
         {
@@ -44,7 +46,7 @@ namespace Photon.NeuralNetwork.Opertat.Debug
 
             return new NeuralNetworkImage[] { init.Image() };
         }
-        protected async override Task<Record> PrepareNextData(uint offset)
+        protected async override Task<Record> PrepareNextData(uint offset, bool training)
         {
             byte[] result = null, data = null;
             string result_str = null, data_str = null;
@@ -73,7 +75,7 @@ namespace Photon.NeuralNetwork.Opertat.Debug
                 else return null;
             }
 
-            return new Record(Sense(data, 20), Sense(result, 40), new string[] { data_str, result_str });
+            return new Record(training, Sense(data, 20), Sense(result, 40), new string[] { data_str, result_str });
         }
         protected double[] CheckResultValidation(NeuralNetworkFlash flash, Record record)
         {
@@ -95,7 +97,7 @@ namespace Photon.NeuralNetwork.Opertat.Debug
         }
         protected override void ReflectFinished(Record record, long duration)
         {
-            if (Offset % Count == 0)
+            if (Offset % TotalCount == 0)
             {
                 print = "";
                 if (record == null) return;

@@ -42,8 +42,9 @@ namespace Photon.NeuralNetwork.Opertat.Debug
             Debugger.Console.WriteCommitLine(print);
 
             Epoch = uint.MaxValue;
-            Count = 128;
-            Offset = 0;
+            TraingingCount = 128;
+            ValidationCount = 0;
+            Offset = 96;
         }
         protected override NeuralNetworkImage[] BrainInitializer()
         {
@@ -59,7 +60,7 @@ namespace Photon.NeuralNetwork.Opertat.Debug
                 .SetInputSize(2)
                 .AddLayer(conduction == "soft-relu" ? (IConduction)new SoftReLU() : new ReLU(), layers)
                 .AddLayer(new Sigmoind(), 1)
-                .SetCorrection(new Errorest())
+                .SetCorrection(new Errorest(), new RegularizationL1())
                 .SetDataConvertor(
                     new DataRange(SignalRange, SignalHeight),
                     new DataRange(SignalRange * 2, SignalRange))
@@ -67,7 +68,7 @@ namespace Photon.NeuralNetwork.Opertat.Debug
 
             return new NeuralNetworkImage[] { image };
         }
-        protected override Task<Record> PrepareNextData(uint offset)
+        protected override Task<Record> PrepareNextData(uint offset, bool training)
         {
             double[] data = new double[] {
                 random.NextDouble() * SignalRange * 2 - SignalRange,
@@ -81,11 +82,11 @@ namespace Photon.NeuralNetwork.Opertat.Debug
                 ) / 40
             };
 
-            return Task.FromResult(new Record(data, result));
+            return Task.FromResult(new Record(training, data, result));
         }
         protected override void ReflectFinished(Record record, long duration)
         {
-            if (Offset % Count == 0)
+            if (Offset % TotalCount == 0)
                 Debugger.Console.CommitLine();
             else
             {
