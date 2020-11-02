@@ -1,3 +1,2 @@
 last record problem
-test regularization (L1 and L2)
 implement validation to break training
