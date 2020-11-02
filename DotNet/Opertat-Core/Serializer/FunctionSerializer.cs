@@ -175,6 +175,7 @@ namespace Photon.NeuralNetwork.Opertat.Implement
                 Sigmoind _ => 1,
                 ReLU _ => 2,
                 SoftReLU _ => 3,
+                Straight _ => 4,
                 _ => throw new ArgumentException(
                     nameof(conduction), "this type of IConduction is not registered."),
             };
@@ -189,6 +190,7 @@ namespace Photon.NeuralNetwork.Opertat.Implement
                 1 => new Sigmoind(),
                 2 => new ReLU(),
                 3 => new SoftReLU(),
+                4 => new Straight(),
                 _ => throw new ArgumentException(
                     nameof(value), "this type of IConduction is not registered."),
             };

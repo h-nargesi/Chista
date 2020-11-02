@@ -73,14 +73,17 @@ namespace Photon.NeuralNetwork.Opertat.Debug
             var images = new NeuralNetworkImage[setting.Brain.ImagesCount];
             var conduction = setting.Brain.Layers.Conduction == "soft-relu" ?
                 (IConduction)new SoftReLU() : new ReLU();
+            var output = setting.Brain.Layers.OutputConduction == "straight" ?
+                (IConduction)new Straight() : new Sigmoind();
+            var range = setting.Brain.Layers.OutputConduction == "straight" ? null : new DataRange(20, 10);
 
             for (int i = 0; i < images.Length; i++)
                 images[i] = new NeuralNetworkInitializer()
                     .SetInputSize(SIGNAL_COUNT_TOTAL)
                     .AddLayer(conduction, layers)
-                    .AddLayer(new Sigmoind(), RESULT_COUNT)
-                    .SetCorrection(new ErrorStack(RESULT_COUNT))
-                    .SetDataConvertor(new DataRange(5, 0), new DataRange(10, 5))
+                    .AddLayer(output, RESULT_COUNT)
+                    .SetCorrection(new ErrorStack(RESULT_COUNT), new RegularizationL2())
+                    .SetDataConvertor(new DataRange(5, 0), range)
                     .Image();
 
             return images;
@@ -224,7 +227,7 @@ from		Trade
 where		RecordType is not null
 group by	InstrumentID
 having      count(*) > {RECORDS_COUNT_BASICAL}
-order by	Amount desc";
+order by	TrainingCount desc";
         #endregion
 
     }

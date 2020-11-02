@@ -12,6 +12,7 @@ namespace Photon.NeuralNetwork.Opertat.Debug.Config
         public const string key = "layer";
         public const string nodes_count = "nodes-count";
         public const string model_conduction = "conduction";
+        public const string model_output = "output";
 
         public int[] NodesCount
         {
@@ -24,6 +25,13 @@ namespace Photon.NeuralNetwork.Opertat.Debug.Config
         {
             get { return GetSetting(model_conduction, ConductionDefault); }
             set { SetSetting(model_conduction, value); }
+        }
+
+        public string OutputConductionDefault { get; set; } = "sigmoind";
+        public string OutputConduction
+        {
+            get { return GetSetting(model_output, OutputConductionDefault); }
+            set { SetSetting(model_output, value); }
         }
     }
 }

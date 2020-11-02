@@ -6,6 +6,7 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Photon.NeuralNetwork.Opertat.Debug.Config;
+using System.Linq;
 
 namespace Photon.NeuralNetwork.Opertat.Debug
 {
@@ -107,7 +108,7 @@ namespace Photon.NeuralNetwork.Opertat.Debug
             {
                 if (!string.IsNullOrWhiteSpace(setting.Brain.ImagesPath))
                     Directory.CreateDirectory(setting.Brain.ImagesPath);
-                Parallel.ForEach(Brains.Keys, (brain, state, index) =>
+                Parallel.ForEach(Brains.Keys.ToArray(), (brain, state, index) =>
                     NeuralNetworkSerializer.Serialize(
                        brain.Image(),
                        setting.Brain.ImagesPath + image_file_name.Replace("?", (index + 1).ToString())));
