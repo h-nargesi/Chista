@@ -38,7 +38,7 @@ namespace Photon.NeuralNetwork.Opertat.Debug.Config
         private const string data_provider = "data-provider";
         public string DataProvider
         {
-            get { return GetSetting(data_provider); }
+            get { return GetSetting(data_provider, ""); }
             set { SetSetting(data_provider, value); }
         }
 

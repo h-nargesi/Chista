@@ -142,15 +142,14 @@ namespace Photon.NeuralNetwork.Opertat.Implement
         {
             var code = RestorFunctionType();
 
-            switch (code)
+            return code switch
             {
-                case 0: return null;
-                case 1: return new RegularizationL1();
-                case 2: return new RegularizationL2();
-                default:
-                    throw new Exception(
-                        $"this type of IRegularization ({code}) is not registered.");
-            }
+                0 => null,
+                1 => new RegularizationL1(),
+                2 => new RegularizationL2(),
+                _ => throw new Exception(
+                    $"this type of IRegularization ({code}) is not registered."),
+            };
         }
         private ushort RestorFunctionType()
         {

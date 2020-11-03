@@ -39,7 +39,7 @@ namespace Photon.NeuralNetwork.Opertat.Debug.Config
 
         public bool Rebuild
         {
-            get { return GetSetting<bool>(rebuild) ?? false; }
+            get { return GetSetting(rebuild, false); }
             set { SetSetting(rebuild, value); }
         }
 
