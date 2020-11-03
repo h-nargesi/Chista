@@ -13,7 +13,6 @@ namespace Photon.NeuralNetwork.Opertat.Debug
         static void Main(string[] args)
         {
             Debugger.Console = new CommandPrompt();
-            Debugger.Console.CommitLine();
 
             while (true)
             {
@@ -32,8 +31,6 @@ namespace Photon.NeuralNetwork.Opertat.Debug
                 {
                     case "":
                     case null:
-                        Debugger.Console.CommitLine();
-                        Debugger.Console.WriteCommitLine("get process name.");
                         break;
 
                     case "quit": return;
@@ -64,11 +61,11 @@ namespace Photon.NeuralNetwork.Opertat.Debug
                         break;
 
                     default:
-                        Debugger.Console.CommitLine();
                         Debugger.Console.WriteCommitLine("invalid process name.");
                         break;
                 }
 
+                Debugger.Console.WriteCommitLine("get process name.");
                 args = Regex.Replace(Console.ReadLine().Trim(), "[ \t\r\n]{2,}", " ").Split(' ');
                 Debugger.Console.CommitLine();
             }
@@ -79,33 +76,55 @@ namespace Photon.NeuralNetwork.Opertat.Debug
             public CommandPrompt()
             {
                 System.Console.OutputEncoding = Encoding.UTF8;
+                Commit();
             }
 
+            private readonly object loacker = new object();
 #if !LX
             private int last_line;
+#else
+            private char? last_char;
 #endif
 
-            public override void WriteWord(string text)
+            private void Write(string text)
             {
 #if !LX
                 System.Console.SetCursorPosition(0, last_line);
                 System.Console.WriteLine(text);
 #else
                 System.Console.Write("\r" + text);
+                if (text != null && text.Length > 0)
+                    last_char = text[^1];
+                else last_char = null;
 #endif
             }
-            public override void CommitLine()
+            private void Commit()
             {
 #if !LX
                 last_line = System.Console.CursorTop;
+                if (System.Console.CursorLeft > 0) last_line++;
 #else
-                System.Console.WriteLine();
+                if (last_char != '\n')
+                    System.Console.WriteLine();
 #endif
+            }
+
+            public override void WriteWord(string text)
+            {
+                lock (loacker) Write(text);
+            }
+            public override void CommitLine()
+            {
+                lock (loacker) Commit();
             }
             public override void WriteCommitLine(string text)
             {
-                WriteWord(text);
-                CommitLine();
+                lock (loacker)
+                {
+                    Commit();
+                    Write(text);
+                    Commit();
+                }
             }
         }
     }
