@@ -1,9 +1,9 @@
 use RahavardNovin3;
 go
 
-declare @ID int = 2892;
+declare @ID int = 13;
 declare @Type char(1) = 'X';
-declare @Offset bigint = 0;
+declare @Offset bigint = 1900;
 
 --create or alter procedure GetTrade  @ID int, @Type char(1), @Offset bigint as
 
@@ -26,84 +26,132 @@ with pointer as (
 -- RESTRICTION
 ), ristriction as (
 	select		StartDateEn, StartDateJl,
-				dateadd(month, 1,
-					dbo.jparse(StartDateJl / 10000 - 4,/*YEARS_COUNT + 1*/
-					StartDateJl % 10000 / 100,
-					StartDateJl % 100, 0, 0, 0)) as EndDateEn
-	from (select StartDateEn, dbo.jalali(StartDateEn) as StartDateJl from pointer) p
+				(
+		select		DateTimeEn
+		from		Trade t
+		where		InstrumentID = @ID and DateTimeEn < p_end.EndDateEn
+		order by	DateTimeEn desc
+		offset		60/*SIGNAL_LAST_YEARS*/ rows
+		fetch		first 1 rows only
+				) as EndDateEn
+	from (
+		select		StartDateEn, StartDateJl,
+					dbo.jparse(StartDateJl / 10000 - 3,/*YEARS_COUNT*/
+						StartDateJl % 10000 / 100,
+						StartDateJl % 100, 0, 0, 0) as EndDateEn
+		from (select StartDateEn, dbo.jalali(StartDateEn) as StartDateJl from pointer) p
+	) p_end
 
 -- STREAM
 ), stream as (
-	select		strm.*,
-				dbo.jalali(DateTimeEnNext) as DateTimeJlNext,
-				floor(DateTimeJl / 10000) as DateTimeJYear
-	from (
-		select		row_number() over (order by DateTimeEn desc) as Ranking,
-					StartDateEn, StartDateJl, DateTimeEn, dbo.jalali(DateTimeEn) DateTimeJl,
-					lead(DateTimeEn) over (order by DateTimeEn desc) as DateTimeEnNext,
-					100 * isnull(ClosePriceChange / lead(ClosePrice) over (order by DateTimeEn desc), 0) as ChangePercent
-		from		Trade, ristriction
-		where		InstrumentID = @ID and RecordType is not null and DateTimeEn between EndDateEn and StartDateEn
-	) strm
+select		row_number() over (order by DateTimeEn desc) as Ranking,
+			DateTimeEn, dbo.jalali(DateTimeEn) DateTimeJl,
+			dbo.jalali(lead(DateTimeEn) over (order by DateTimeEn desc)) as DateTimeJlNext,
+			StartDateJl,
+			100 * isnull(ClosePriceChange / lead(ClosePrice) over (order by DateTimeEn desc), 0) as ChangePercent
+from		Trade, ristriction
+where		InstrumentID = @ID and DateTimeEn between EndDateEn and StartDateEn
+
+-- DETAILS
+), details as (
+	select 	StartDateJl % 10000 as StartDateJl_Date,
+			--DateTimeJl / 10000 as DateTimeJl_Year,
+			--DateTimeJl % 10000 as DateTimeJl_Date,
+			DateTimeJlNext / 10000 as DateTimeJlNext_Year,
+			stream.*
+	from   	stream
 
 -- ANNUAL
 ), annual as (
-  select Ranking, DateTimeEn,
-         max(period_start) over (
-            order by DateTimeEn desc rows between 60/*SIGNAL_LAST_YEARS*/ preceding and current row)
-			as period_start,
-         max(year_diff) over (
-            order by DateTimeEn desc rows between 60/*SIGNAL_LAST_YEARS*/ preceding and current row)
-			as year_diff,
-         ChangePercent
+  select 	Ranking, DateTimeEn,
+			max(period_start) over (
+				order by DateTimeEn desc rows between 59/*SIGNAL_LAST_YEARS-1*/ preceding and current row)
+				as period_start,
+			max(year_diff) over (
+				order by DateTimeEn desc rows between 59/*SIGNAL_LAST_YEARS-1*/ preceding and current row)
+				as year_diff,
+			ChangePercent
     from (
-      select case when Annual between DateTimeJlNext and DateTimeJl then Ranking else null end as period_start,
-             case when Annual between DateTimeJlNext and DateTimeJl then StartDateJl / 10000 - DateTimeJYear + 1 else null end as year_diff,
-             annual.*
+      select 	case when DateTimeJlNext < Annual and Annual <= DateTimeJl then Ranking else null end as period_start,
+				case when DateTimeJlNext < Annual and Annual <= DateTimeJl
+					then (StartDateJl - Criterion_Year) / 10000 + 1 else null end as year_diff,
+				annual_dtl.*
         from (
-            select DateTimeJYear * 10000 + (StartDateJl % 10000) as Annual,
-                   stream.*
-              from stream
-        ) annual
+            select	Criterion_Year + StartDateJl_Date as Annual,
+					dtl_criterion.*
+            from (
+				select	case when StartDateJl_Date > DateTimeJl % 10000
+							then DateTimeJlNext_Year else DateTimeJl / 10000
+						end * 10000 as Criterion_Year,
+						details.*
+				from	details
+			) dtl_criterion
+        ) annual_dtl
     ) annual_seq
 
 -- LABEL
 ), label as (
-    select case
-             when Ranking <= 20/*RESULT_COUNT*/
-             then '0-' + cast(Ranking as varchar)
-             -----------------------------------------------------------
-             when Ranking <= 20/*RESULT_COUNT*/ + 40/*SIGNAL_STEP_COUNT*/
-             then '1-' + cast((Ranking - 21) + 1 as varchar)
-             -----------------------------------------------------------
-             when Ranking <= 20/*RESULT_COUNT*/ + 80/*SIGNAL_STEP_COUNT*2*/
-             then '2-' + cast(floor((Ranking - 61) / 2) + 1 as varchar)
-             -----------------------------------------------------------
-             when Ranking <= 20/*RESULT_COUNT*/ + 120/*SIGNAL_STEP_COUNT*3*/
-             then '3-' + cast(floor((Ranking - 101) / 4) + 1 as varchar)
-             -----------------------------------------------------------
-             when Ranking <= 20/*RESULT_COUNT*/ + 160/*SIGNAL_STEP_COUNT*4*/
-             then '4-' + cast(floor((Ranking - 141) / 8) + 1 as varchar)
-             -----------------------------------------------------------
-             when Ranking between period_start and period_start + 58/*SIGNAL_LAST_YEARS-2*/
-             then '7-' + cast(year_diff - 1 as varchar) + 
-                  '-' + cast(floor((Ranking - period_start + 1) / year_diff) + 1 as varchar)
-             -------------------------------------------------------------------------------
-             else null
-           end as Section,
-           annual.DateTimeEn,
-           annual.ChangePercent
-      from annual
+    select	case
+				when Ranking <= 20/*RESULT_COUNT*/
+				then 0
+				-----------------------------------------------------------
+				when Ranking <= 20/*RESULT_COUNT*/ + 40/*SIGNAL_STEP_COUNT*/
+				then 1
+				-----------------------------------------------------------
+				when Ranking <= 20/*RESULT_COUNT*/ + 80/*SIGNAL_STEP_COUNT*2*/
+				then 2
+				-----------------------------------------------------------
+				when Ranking <= 20/*RESULT_COUNT*/ + 120/*SIGNAL_STEP_COUNT*3*/
+				then 3
+				-----------------------------------------------------------
+				when Ranking <= 20/*RESULT_COUNT*/ + 160/*SIGNAL_STEP_COUNT*4*/
+				then 4
+				-----------------------------------------------------------
+				when Ranking > 20/*RESULT_COUNT*/ + 160/*SIGNAL_STEP_COUNT*4*/ and period_start is not null
+				then 10 + year_diff - 1
+				-------------------------------------------------------------------------------
+				else null
+			end as Section,
+			case
+				when Ranking <= 20/*RESULT_COUNT*/
+				then Ranking
+				-----------------------------------------------------------
+				when Ranking <= 20/*RESULT_COUNT*/ + 40/*SIGNAL_STEP_COUNT*/
+				then (Ranking - 21) + 1
+				-----------------------------------------------------------
+				when Ranking <= 20/*RESULT_COUNT*/ + 80/*SIGNAL_STEP_COUNT*2*/
+				then floor((Ranking - 61) / 2) + 1
+				-----------------------------------------------------------
+				when Ranking <= 20/*RESULT_COUNT*/ + 120/*SIGNAL_STEP_COUNT*3*/
+				then floor((Ranking - 101) / 4) + 1
+				-----------------------------------------------------------
+				when Ranking <= 20/*RESULT_COUNT*/ + 160/*SIGNAL_STEP_COUNT*4*/
+				then floor((Ranking - 141) / 8) + 1
+				-----------------------------------------------------------
+				when Ranking > 20/*RESULT_COUNT*/ + 160/*SIGNAL_STEP_COUNT*4*/ and period_start is not null
+				then floor((Ranking - period_start + year_diff) / year_diff)
+				-------------------------------------------------------------------------------
+				else null
+			end as Ranking,
+			annual.DateTimeEn,
+			annual.ChangePercent
+      from	annual
 
 -- SECTION
 ), section as (
-    select avg(ChangePercent) as ChangePercent
-         , min(DateTimeEn) as DateTimeEn
-         , Section
+    select p.Section
+		 , p.Ranking
+		 , avg(isnull(ChangePercent, 0)) as ChangePercent
+		 
+         , min(isnull(DateTimeEn, getdate())) as DateTimeEn
+         , cast(p.Section as varchar) + '-' + cast(p.Ranking as varchar) as SectionString
          , count(*) as Quantity
-      from label
-     where Section is not null
-  group by Section
+		 
+      from Pattern p left join label
+	    on p.Section = label.Section and p.Ranking = label.Ranking
+  group by p.Section, p.Ranking
 )
 
-select */*ChangePercent*/ from section order by DateTimeEn desc
+--select * from ristriction
+select * from section order by Section, Ranking
+--select ChangePercent from section order by Section, Ranking

@@ -8,7 +8,7 @@ select		InstrumentID, count(*) as Amount,
 from		Trade
 where		RecordType is not null
 group by	InstrumentID
-order by	Amount desc
+order by	InstrumentID-- desc
 ;
 
 select		count(*) as Amount,
