@@ -6,7 +6,6 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Photon.NeuralNetwork.Opertat.Debug.Config;
-using System.Linq;
 
 namespace Photon.NeuralNetwork.Opertat.Debug
 {
@@ -83,7 +82,6 @@ namespace Photon.NeuralNetwork.Opertat.Debug
         protected abstract NeuralNetworkImage[] BrainInitializer();
         protected override void OnError(Exception ex)
         {
-            Debugger.Console.CommitLine();
             Debugger.Console.WriteCommitLine(ex.Message);
             Debugger.Console.WriteCommitLine(ex.StackTrace);
         }
@@ -92,36 +90,29 @@ namespace Photon.NeuralNetwork.Opertat.Debug
             Debugger.Console.WriteCommitLine("press escape key to exit.");
             while (Console.ReadKey(true).Key != ConsoleKey.Escape) ;
         }
-        public override void Dispose()
+        protected override void OnStopped()
         {
-            base.Dispose();
-
-            Debugger.Console.CommitLine();
-            Debugger.Console.WriteCommitLine("finishing ... ");
-
             setting.Progress.CurrentOffset = Offset;
 
             Debugger.Console.WriteCommitLine("storing brain's image ... ");
             string image_file_name = $"{Name}-?.nni";
 
-            if (Brains.Count > 0)
+            if (Progresses.Count > 0)
             {
                 if (!string.IsNullOrWhiteSpace(setting.Brain.ImagesPath))
                     Directory.CreateDirectory(setting.Brain.ImagesPath);
-                Parallel.ForEach(Brains.Keys.ToArray(), (brain, state, index) =>
+                Parallel.ForEach(Progresses, (progress, state, index) =>
                     NeuralNetworkSerializer.Serialize(
-                       brain.Image(),
+                       progress.Brain.Image(),
                        setting.Brain.ImagesPath + image_file_name.Replace("?", (index + 1).ToString())));
             }
 
             setting.Save();
-            Disposed = true;
 
             Debugger.Console.WriteCommitLine("finished");
         }
 
         public abstract string Name { get; }
-        public bool Disposed { get; protected set; }
 
         protected static string Print(double[,] matrix, int? digit = 6)
         {

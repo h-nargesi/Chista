@@ -20,12 +20,25 @@ namespace Photon.NeuralNetwork.Opertat.Debug
         public const string NAME = "stk";
         public override string Name => NAME;
 
-        private int company_step = 0;
-        private uint last_instrument = 0;
-        private List<(uint cumulative, uint company_id)> cumulative_frequency;
+        private int company_step = 0, last_instrument = 0;
+        private List<Step> cumulative_frequency;
         private SqlCommand sqlite;
         private string print = "";
         private readonly object sqlite_lock = new object();
+
+        private class Step
+        {
+            public readonly uint start_point;
+            public readonly int instrument;
+            public readonly bool is_training;
+
+            public Step(uint start_point, int instrument, bool is_training)
+            {
+                this.start_point = start_point;
+                this.instrument = instrument;
+                this.is_training = is_training;
+            }
+        }
 
         protected override void OnInitialize()
         {
@@ -42,20 +55,27 @@ namespace Photon.NeuralNetwork.Opertat.Debug
                 sqlite.CommandText = sql_counting;
                 using var reader = sqlite.ExecuteReader();
 
-                TraingingCount = 0; ValidationCount = 0;
-                cumulative_frequency = new List<(uint cumulative, uint company_id)>();
+                Count = 0;
+                cumulative_frequency = new List<Step>();
                 while (reader.Read())
                 {
-                    cumulative_frequency.Add((TraingingCount, (uint)(int)reader[0]));
-                    TraingingCount += (uint)(int)reader[1];
-                    ValidationCount += (uint)(int)reader[2];
+                    var tr_count = (uint)(int)reader[1];
+                    if (tr_count > 0)
+                    {
+                        cumulative_frequency.Add(new Step(Count, (int)reader[0], true));
+                        Count += tr_count;
+                    }
+
+                    var vl_count = (uint)(int)reader[2];
+                    if (vl_count > 0)
+                    {
+                        cumulative_frequency.Add(new Step(Count, (int)reader[0], false));
+                        Count += vl_count;
+                    }
                 }
+
                 if (cumulative_frequency.Count == 0)
                     throw new Exception("The data set is empty.");
-
-                // TODO: test validation
-                // ignore validation
-                ValidationCount = 0;
 
                 sqlite.CommandText = "GetTrade";
                 sqlite.CommandType = CommandType.StoredProcedure;
@@ -88,7 +108,7 @@ namespace Photon.NeuralNetwork.Opertat.Debug
 
             return images;
         }
-        protected override Task<Record> PrepareNextData(uint offset, bool is_training)
+        protected override Task<Record> PrepareNextData(uint offset)
         {
             return Task.Run(() =>
             {
@@ -96,15 +116,17 @@ namespace Photon.NeuralNetwork.Opertat.Debug
                 var result = new double[RESULT_COUNT];
                 var signal = new double[SIGNAL_COUNT_TOTAL];
 
-                uint i = 0, company_id;
-                (offset, company_id) = FindCompany(offset);
+                uint i = 0;
+                int company_id;
+                bool is_training;
+                (offset, company_id, is_training) = FindCompany(offset);
 
                 lock (sqlite_lock)
                     if (sqlite != null)
                     {
                         sqlite.Parameters.Clear();
                         sqlite.Parameters.Add("@ID", SqlDbType.Int).Value = company_id;
-                        sqlite.Parameters.Add("@Type", SqlDbType.Char, 1).Value = 'X';
+                        sqlite.Parameters.Add("@Type", SqlDbType.Char, 1).Value = is_training ? 'X' : 'V';
                         sqlite.Parameters.Add("@Offset", SqlDbType.Int).Value = offset;
                         using var reader = sqlite.ExecuteReader();
                         while (reader.Read())
@@ -117,72 +139,76 @@ namespace Photon.NeuralNetwork.Opertat.Debug
                         }
                     }
 
+                if (i < RESULT_COUNT + SIGNAL_COUNT_TOTAL)
+                    throw new Exception($"Invalid data size ({offset}).");
+
                 return new Record(is_training, signal, result, company_id, DateTime.Now.Ticks - start_time);
             });
         }
-        private (uint offset, uint company_id) FindCompany(uint offset)
+        private (uint offset, int instrument_id, bool is_training) FindCompany(uint offset)
         {
             if (offset <= 0)
             {
                 company_step = 0;
-                return cumulative_frequency[company_step];
+                var inst = cumulative_frequency[company_step];
+                return (inst.start_point, inst.instrument, inst.is_training);
             }
 
-            uint cum_left, com_left, cum_right, com_right;
+            Step left, right;
             while (true)
             {
-                (cum_left, com_left) = cumulative_frequency[company_step];
+                left = cumulative_frequency[company_step];
                 if (company_step + 1 < cumulative_frequency.Count)
-                    (cum_right, com_right) = cumulative_frequency[company_step + 1];
-                else return (offset - cum_left, com_left);
+                    right = cumulative_frequency[company_step + 1];
+                else return (offset - left.start_point, left.instrument, left.is_training);
 
-                if (cum_left <= offset && offset < cum_right) return (offset - cum_left, com_left);
-                else if (offset == cum_right)
+                if (left.start_point <= offset && offset < right.start_point) 
+                    return (offset - left.start_point, left.instrument, left.is_training);
+                else if (offset == right.start_point)
                 {
                     company_step++;
-                    return (offset - cum_right, com_right);
+                    return (offset - right.start_point, right.instrument, right.is_training);
                 }
-                else if (offset > com_right)
+                else if (offset > right.start_point)
                     company_step = (cumulative_frequency.Count - (company_step + 1)) / 2;
-                else if (cum_left > offset) company_step /= 2;
+                else if (left.start_point > offset) company_step /= 2;
             }
         }
         protected override void ReflectFinished(Record record, long duration)
         {
-            if (record.training && last_instrument != (uint)record.extra)
+            string clearing;
+            if (record.training && last_instrument != (int)record.extra)
             {
-                last_instrument = (uint)record.extra;
-                Debugger.Console.CommitLine();
+                last_instrument = (int)record.extra;
+                clearing = null;
             }
-            else
-            {
-                print = Regex.Replace(print, "[^ \t\r\n]", " ");
-                Debugger.Console.WriteWord(print);
-            }
+            else clearing = Regex.Replace(print, "[^ \t\r\n]", " ");
 
             double accuracy = 0, result = 0;
-            foreach (var reuslt in Brains.Values)
+            foreach (var prc in Progresses)
             {
-                accuracy = Math.Max(reuslt.accuracy, accuracy);
-                result += reuslt.predict.ResultSignals[0];
+                accuracy = Math.Max(prc.CurrentAccuracy, accuracy);
+                result += prc.LastPredict.ResultSignals[0];
             }
-            result /= Brains.Count;
+            result /= Progresses.Count;
 
-            print = $"#{Offset / TotalCount},{Offset % TotalCount}," +
-                $"{(record.training ? "training" : "validation")}:\r\n\t" +
+            print = $"#{Offset / Count},{Offset % Count}:\r\n\t" +
+                $"model={(record.training ? "training" : "validation")} " +
+                $"{setting.Brain.ImagesCount} brain(s)\r\n\t" +
                 $"instm={record.extra}\t" +
-                $"output={Print(record.result[0], 3):R}\t" +
-                $"predict,avg={Print(result, 3):R}\t" +
                 $"accuracy,best={Print(accuracy * 100, 4):R}\r\n\t" +
-                $"data loading={GetDurationString(record.duration.Value)}\r\n\t" +
+                $"output={Print(record.result[0], 3):R}\t" +
+                $"predict,avg={Print(result, 3):R}\r\n\t" +
+                $"data loading={GetDurationString(record.duration.Value)}\t" +
                 $"prediction={GetDurationString(duration)}";
 
+            if(clearing == null) Debugger.Console.CommitLine();
+            else Debugger.Console.WriteWord(clearing);
             Debugger.Console.WriteWord(print);
         }
-
-        public override void Dispose()
+        protected override void OnStopped()
         {
-            base.Dispose();
+            base.OnStopped();
 
             if (sqlite != null)
                 lock (sqlite_lock)
@@ -203,7 +229,6 @@ namespace Photon.NeuralNetwork.Opertat.Debug
         private static readonly int SIGNAL_COUNT_BASICAL;
         private static readonly int SIGNAL_COUNT_LAST_YEARS;
         private static readonly int SIGNAL_COUNT_TOTAL;
-        private static readonly int RECORDS_COUNT_BASICAL;
 
         static Stack()
         {
@@ -211,7 +236,6 @@ namespace Photon.NeuralNetwork.Opertat.Debug
                 (int)Math.Ceiling(SIGNAL_STEP_COUNT / 2.0) +
                 (int)Math.Ceiling(SIGNAL_STEP_COUNT / 4.0) +
                 (int)Math.Ceiling(SIGNAL_STEP_COUNT / 8.0);
-            RECORDS_COUNT_BASICAL = RESULT_COUNT + SIGNAL_COUNT_BASICAL;
 
             SIGNAL_COUNT_LAST_YEARS = 0;
             for (int y = 1; y <= YEARS_COUNT;)
@@ -221,13 +245,14 @@ namespace Photon.NeuralNetwork.Opertat.Debug
 
         private readonly static string sql_counting = $@"
 select		InstrumentID,
-            sum(iif(RecordType = 'X', 1, 0)) - {RECORDS_COUNT_BASICAL} as TrainingCount,
-            sum(iif(RecordType = 'V', 1, 0)) - {RECORDS_COUNT_BASICAL} as ValidationCount
+            sum(iif(RecordType = 'X', 1, 0)) as TrainingCount,
+            sum(iif(RecordType = 'V', 1, 0)) as ValidationCount
 from		Trade
 where		RecordType is not null
 group by	InstrumentID
-having      count(*) > {RECORDS_COUNT_BASICAL}
-order by	TrainingCount desc";
+having      sum(iif(RecordType = 'X', 1, 0)) > 0
+        and sum(iif(RecordType = 'V', 1, 0)) > 0
+order by    InstrumentID";
         #endregion
 
     }

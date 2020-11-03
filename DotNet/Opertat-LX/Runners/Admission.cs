@@ -18,7 +18,6 @@ namespace Photon.NeuralNetwork.Opertat.Debug
         public const string NAME = "adm";
         private const int SignalRange = 100, SignalHeight = 0;
 
-        private Brain brain;
         private string print = "";
         private readonly Random random = new Random(DateTime.Now.Millisecond);
 
@@ -27,11 +26,8 @@ namespace Photon.NeuralNetwork.Opertat.Debug
             setting.Brain.ImagesPathDefault = "";
             base.OnInitialize();
 
-            brain = null;
-            foreach (var b in Brains.Keys) brain = b;
-
             string print = null;
-            var image = brain.Image();
+            var image = Progresses[0].Brain.Image();
             for (var i = 0; i < image.layers.Length; i++)
             {
                 print += Print(image.layers[i].Bias.ToArray());
@@ -42,9 +38,8 @@ namespace Photon.NeuralNetwork.Opertat.Debug
             Debugger.Console.WriteCommitLine(print);
 
             Epoch = uint.MaxValue;
-            TraingingCount = 128;
-            ValidationCount = 0;
-            Offset = 96;
+            Count = 128;
+            Offset = 0;
         }
         protected override NeuralNetworkImage[] BrainInitializer()
         {
@@ -60,7 +55,7 @@ namespace Photon.NeuralNetwork.Opertat.Debug
                 .SetInputSize(2)
                 .AddLayer(conduction == "soft-relu" ? (IConduction)new SoftReLU() : new ReLU(), layers)
                 .AddLayer(new Sigmoind(), 1)
-                .SetCorrection(new Errorest(), new RegularizationL1())
+                .SetCorrection(new Errorest())
                 .SetDataConvertor(
                     new DataRange(SignalRange, SignalHeight),
                     new DataRange(SignalRange * 2, SignalRange))
@@ -68,7 +63,7 @@ namespace Photon.NeuralNetwork.Opertat.Debug
 
             return new NeuralNetworkImage[] { image };
         }
-        protected override Task<Record> PrepareNextData(uint offset, bool training)
+        protected override Task<Record> PrepareNextData(uint offset)
         {
             double[] data = new double[] {
                 random.NextDouble() * SignalRange * 2 - SignalRange,
@@ -82,11 +77,11 @@ namespace Photon.NeuralNetwork.Opertat.Debug
                 ) / 40
             };
 
-            return Task.FromResult(new Record(training, data, result));
+            return Task.FromResult(new Record(true, data, result));
         }
         protected override void ReflectFinished(Record record, long duration)
         {
-            if (Offset % TotalCount == 0)
+            if (Offset % Count == 0)
                 Debugger.Console.CommitLine();
             else
             {
@@ -94,13 +89,14 @@ namespace Photon.NeuralNetwork.Opertat.Debug
                 Debugger.Console.WriteWord(print);
             }
 
-            var (accuracy, predict) = Brains[brain];
+            var accuracy = Progresses[0].CurrentAccuracy;
+            var predict = Progresses[0].LastPredict;
 
             print = $"#{Offset} = ";
             print += $"result:{Print(record.result, 6)}\t";
             print += $"output:{Print(predict.ResultSignals, 6)}\t";
             print += $"accuracy:{Print(accuracy * 100, 2)}\t";
-            print += $"error:{Print(brain.Errors(predict, record.result), null)}\r\n";
+            print += $"error:{Print(Progresses[0].Brain.Errors(predict, record.result), null)}\r\n";
 
             /*var image = Brain.Image();
             for (var i = 0; i < image.layers.Length; i++)
@@ -138,7 +134,7 @@ namespace Photon.NeuralNetwork.Opertat.Debug
                         break;
                 }
             }
-            while (!Disposed);
+            while (!Stopped);
         }
 
         private double Sigmoind(double input)

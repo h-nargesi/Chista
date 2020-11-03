@@ -9,145 +9,228 @@ namespace Photon.NeuralNetwork.Opertat
 {
     public abstract class Instructor : IDisposable
     {
-        private bool stoping = false;
-        private readonly Dictionary<Brain, (double accuracy, NeuralNetworkFlash predict)> brains =
-            new Dictionary<Brain, (double accuracy, NeuralNetworkFlash predict)>();
-
         #region Progress Control
         public uint Offset { get; set; }
-        public uint TraingingCount { get; set; }
-        public uint ValidationCount { get; set; }
-        public uint TotalCount => TraingingCount + ValidationCount;
+        public uint Count { get; set; }
         public uint Epoch { get; set; }
         public uint Tries { get; set; }
-        private (uint, bool) OffsetCurrent(uint next)
-        {
-            next = (Offset + next) % TotalCount;
-            bool is_training_process = next < TraingingCount;
-            if (!is_training_process) next -= TraingingCount;
-
-            return (next, is_training_process);
-        }
         #endregion
 
+
         #region Brain Management
-        public IReadOnlyDictionary<Brain, (double accuracy, NeuralNetworkFlash predict)> Brains => brains;
+
+        private readonly List<Progress> progresses = new List<Progress>();
+        public IReadOnlyList<IProgress> Progresses => progresses;
         public void BrainAdd(Brain brain)
         {
-            lock (brains) brains.Add(brain, (0, null));
-        }
-        public void BrainRemove(Brain brain)
-        {
-            lock (brains) brains.Remove(brain);
+            lock (progresses) progresses.Add(new Progress(brain));
         }
         public void BrainRemove(int index)
         {
-            lock (brains)
-            {
-                foreach (Brain brain in brains.Keys)
-                    if (index-- == 0)
-                    {
-                        brains.Remove(brain);
-                        break;
-                    }
-            }
+            lock (progresses) progresses.RemoveAt(index);
         }
         #endregion
 
+
         #region Abstract Stuff
         protected abstract void OnInitialize();
-        protected abstract Task<Record> PrepareNextData(uint offset, bool training);
+        protected abstract Task<Record> PrepareNextData(uint offset);
         protected abstract void ReflectFinished(Record record, long duration);
         protected abstract void OnError(Exception ex);
+        protected abstract void OnStopped();
         #endregion
 
-        #region Best Validation
-        // TODO: store best validation in memory
-        // TODO: restore best validation in dispose
-        #endregion
 
+        #region Progress Job
+
+        private readonly ReaderWriterLock locker = new ReaderWriterLock();
+        public bool Canceling { get; private set; } = false;
+        public bool Stopped => locker.IsWriterLockHeld;
         public Task Start()
         {
             return Task.Run(() =>
             {
+                Canceling = false;
+                locker.AcquireWriterLock(2048);
+                Task<Record> record_geter = null;
+
                 try
                 {
                     // initialize by developer
                     OnInitialize();
 
-                    // variables
-                    var (offest, is_training) = OffsetCurrent(0);
-                    var record_count = 0;
-                    var accuracy_total = new Dictionary<Brain, double>();
-                    var record_geter = PrepareNextData(offest, is_training);
-
-                    // initial total accuracy for each brain
-                    foreach (var brain in brains.Keys)
-                        accuracy_total.Add(brain, 0);
+                    // fetch next record
+                    record_geter = PrepareNextData(Offset);
+                    var prv_was_training = true;
 
                     // training loop
-                    while (Offset / TotalCount <= Epoch)
+                    while (!Canceling && Offset / Count <= Epoch)
                     {
-                        if (stoping) return;
-
                         // current record
                         record_geter.Wait();
                         var record = record_geter.Result;
 
                         // fetch next record
-                        var (next, next_is_training) = OffsetCurrent(1);
-                        record_geter = PrepareNextData(next, next_is_training);
-
-                        if (offest == 0)
-                        {
-                            record_count = 0;
-                            accuracy_total.Clear();
-                            foreach (var brain in brains.Keys)
-                                accuracy_total.Add(brain, 0);
-                        }
+                        record_geter = PrepareNextData((Offset + 1) % Count);
 
                         if (record != null && record.data != null && record.result != null)
                         {
                             // reporting vriables
-                            record_count++;
                             var start_time = DateTime.Now.Ticks;
 
-                            lock (brains)
-                                _ = Parallel.ForEach(brains.Keys.ToArray(), (brain, state, index) =>
+                            if (Canceling) break;
+
+                            lock (progresses)
+                            {
+                                Parallel.ForEach(progresses, (progress, state, index) =>
                                   {
                                       NeuralNetworkFlash flash = null;
 
                                       var i = 1;
-                                      if (!record.training) flash = brain.Test(record.data);
-                                      else do { flash = brain.Train(record.data, record.result); }
-                                      while (!stoping && ++i < Tries && flash.Accuracy < 1);
+                                      if (!record.training) flash = progress.Brain.Test(record.data);
+                                      else do { flash = progress.Brain.Train(record.data, record.result); }
+                                          while (!Canceling && ++i < Tries && flash.Accuracy < 1);
 
-                                      // total accuracy
-                                      accuracy_total[brain] += flash.Accuracy;
-
-                                      // report_brain
-                                      brains[brain] = (accuracy_total[brain] / record_count, flash);
+                                      // change progress state
+                                      progress.ChangeSatate(flash);
                                   });
 
+                                if (record.training != prv_was_training)
+                                    Parallel.ForEach(progresses, (progress, state, index) =>
+                                        progress.FinishCurrentState(!record.training));
+                            }
+
+                            if (Canceling) break;
                             // call event
-                            if (stoping) return;
                             ReflectFinished(record, DateTime.Now.Ticks - start_time);
+                            prv_was_training = record.training;
                         }
 
                         // next offset
                         Offset++;
-                        offest = next;
                     }
-                    Dispose();
                 }
                 catch (Exception ex) { OnError(ex); }
+                finally { locker.ReleaseWriterLock(); }
             });
         }
-
-        public virtual void Dispose()
+        public void Dispose()
         {
-            stoping = true;
+            Canceling = true;
+            locker.AcquireWriterLock(2048);
+            OnStopped();
+            locker.ReleaseWriterLock();
         }
+        #endregion
+
+
+        #region Progress History
+        private class BrainInfo
+        {
+            public BrainInfo(NeuralNetworkImage image, double accuracy)
+            {
+                this.image = image;
+                this.accuracy = accuracy;
+            }
+
+            public readonly double accuracy;
+            public readonly NeuralNetworkImage image;
+        }
+
+        private class History
+        {
+            public History()
+            {
+                history = new LinkedList<BrainInfo>();
+            }
+
+            private readonly LinkedList<BrainInfo> history;
+            public BrainInfo BestBrainInfo
+            {
+                get { return history.First?.Value; }
+            }
+
+            public bool AddProgress(IProgress progress)
+            {
+                if (history.Count < 1 || progress.CurrentAccuracy > history.First.Value.accuracy)
+                {
+                    history.Clear();
+                    history.AddLast(new BrainInfo(progress.Brain.Image(), progress.CurrentAccuracy));
+                    return true;
+                }
+                else
+                {
+                    history.AddLast(new BrainInfo(null, progress.CurrentAccuracy));
+
+                    double prv_accuracy = 0;
+                    int descenting_count = 0;
+                    foreach (var info in history)
+                    {
+                        if (prv_accuracy < info.accuracy) descenting_count = 0;
+                        else descenting_count++;
+                        prv_accuracy = info.accuracy;
+                    }
+
+                    if (descenting_count >= 4) return false;
+                    else if (history.Count > 10) return false;
+                    else return true;
+                }
+            }
+        }
+
+        public interface IProgress
+        {
+            public Brain Brain { get; }
+            public double CurrentAccuracy { get; }
+            public NeuralNetworkFlash LastPredict { get; }
+            public NeuralNetworkImage BestBrainImage { get; }
+            public double BestBrainAccuracy { get; }
+        }
+
+        private class Progress : IProgress
+        {
+            private readonly History history = new History();
+            private int record_count;
+            private double total_accuracy;
+
+            public Progress(Brain brain)
+            {
+                Brain = brain ??
+                    throw new ArgumentNullException(nameof(brain), "Instructor.Progress: brain is null");
+            }
+
+            public Brain Brain { get; }
+            public double CurrentAccuracy { get; private set; }
+            public NeuralNetworkFlash LastPredict { get; private set; }
+
+            public void ChangeSatate(NeuralNetworkFlash predict)
+            {
+                record_count++;
+                total_accuracy += predict.Accuracy;
+                CurrentAccuracy = total_accuracy / record_count;
+                LastPredict = predict;
+            }
+            public bool FinishCurrentState(bool is_validated)
+            {
+                record_count = 0;
+                total_accuracy = 0;
+                CurrentAccuracy = 0;
+
+                if (!is_validated) return true;
+                else return history.AddProgress(this);
+            }
+
+            public NeuralNetworkImage BestBrainImage
+            {
+                get { return history.BestBrainInfo.image; }
+            }
+            public double BestBrainAccuracy
+            {
+                get { return history.BestBrainInfo.accuracy; }
+            }
+        }
+        #endregion
+
 
         protected class Record
         {
@@ -156,7 +239,7 @@ namespace Photon.NeuralNetwork.Opertat
             public readonly object extra;
             public readonly long? duration;
 
-            public Record(bool training, double[] data, double[] result, 
+            public Record(bool training, double[] data, double[] result,
                 object extra = null, long? duration = null)
             {
                 this.training = training;
