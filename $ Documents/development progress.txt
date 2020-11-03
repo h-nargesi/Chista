@@ -1,2 +1,1 @@
-last record problem
 implement validation to break training
