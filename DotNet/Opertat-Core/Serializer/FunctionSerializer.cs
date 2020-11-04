@@ -2,8 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.CompilerServices;
+using Photon.NeuralNetwork.Opertat.Implement;
 
-namespace Photon.NeuralNetwork.Opertat.Implement
+namespace Photon.NeuralNetwork.Opertat.Serializer
 {
     class FunctionSerializer
     {

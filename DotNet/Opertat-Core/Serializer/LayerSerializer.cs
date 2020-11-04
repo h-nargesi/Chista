@@ -3,7 +3,7 @@ using System.IO;
 using MathNet.Numerics.LinearAlgebra;
 using Photon.NeuralNetwork.Opertat.Implement;
 
-namespace Photon.NeuralNetwork.Opertat
+namespace Photon.NeuralNetwork.Opertat.Serializer
 {
     static class LayerSerializer
     {
@@ -71,18 +71,16 @@ namespace Photon.NeuralNetwork.Opertat
         }
         private static Layer[] RestoreLastVersion(FileStream stream)
         {
-            var buffer_short = new byte[2];
-            var buffer_int = new byte[4];
-            var buffer_long = new byte[8];
+            var buffer = new byte[8];
 
-            stream.Read(buffer_int, 0, buffer_int.Length);
-            var layer_size = new int[BitConverter.ToInt32(buffer_int, 0)];
+            stream.Read(buffer, 0, 4);
+            var layer_size = new int[BitConverter.ToInt32(buffer, 0)];
 
             int i;
             for (i = 0; i < layer_size.Length; i++)
             {
-                stream.Read(buffer_int, 0, buffer_int.Length);
-                layer_size[i] = BitConverter.ToInt32(buffer_int, 0);
+                stream.Read(buffer, 0, 4);
+                layer_size[i] = BitConverter.ToInt32(buffer, 0);
             }
 
             var layers = new Layer[layer_size.Length - 1];
@@ -94,17 +92,17 @@ namespace Photon.NeuralNetwork.Opertat
 
                 for (i = 0; i < bias.Length; i++)
                 {
-                    stream.Read(buffer_long, 0, buffer_long.Length);
-                    bias[i] = BitConverter.ToDouble(buffer_long, 0);
+                    stream.Read(buffer, 0, 8);
+                    bias[i] = BitConverter.ToDouble(buffer, 0);
                     for (var j = 0; j < synapsees.GetLength(1); j++)
                     {
-                        stream.Read(buffer_long, 0, buffer_long.Length);
-                        synapsees[i, j] = BitConverter.ToDouble(buffer_long, 0);
+                        stream.Read(buffer, 0, 8);
+                        synapsees[i, j] = BitConverter.ToDouble(buffer, 0);
                     }
 
-                    stream.Read(buffer_short, 0, buffer_short.Length);
+                    stream.Read(buffer, 0, 2);
                     conduction = FunctionSerializer.DecodeIConduction(
-                        BitConverter.ToUInt16(buffer_short, 0));
+                        BitConverter.ToUInt16(buffer, 0));
                 }
 
                 layers[l] = new Layer(conduction)
@@ -116,6 +114,5 @@ namespace Photon.NeuralNetwork.Opertat
 
             return layers;
         }
-
     }
 }

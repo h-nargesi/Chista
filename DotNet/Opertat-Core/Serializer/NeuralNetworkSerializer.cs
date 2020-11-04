@@ -1,16 +1,29 @@
 using System;
 using System.IO;
-using Photon.NeuralNetwork.Opertat.Implement;
 
-namespace Photon.NeuralNetwork.Opertat
+namespace Photon.NeuralNetwork.Opertat.Serializer
 {
-    public class NeuralNetworkSerializer
+    public static class NeuralNetworkSerializer
     {
         public const ushort VERSION = 3;
-        public static void Serialize(NeuralNetworkImage image, string path)
+
+        public static void Serialize(string path, NeuralNetworkImage image)
         {
+            if (path == null)
+                throw new ArgumentNullException(nameof(path));
+            if (image == null)
+                throw new ArgumentNullException(nameof(image));
+
             using var stream = File.Create(path);
             stream.Flush();
+            Serialize(stream, image);
+        }
+        public static void Serialize(FileStream stream, NeuralNetworkImage image)
+        {
+            if (stream == null)
+                throw new ArgumentNullException(nameof(stream));
+            if (image == null)
+                throw new ArgumentNullException(nameof(image));
 
             // 1: serialize version
             var buffer = BitConverter.GetBytes(VERSION); // 2-bytes
@@ -34,9 +47,19 @@ namespace Photon.NeuralNetwork.Opertat
             // 6: serialize data output convertor
             function.Serialize(image.output_convertor);
         }
+
         public static NeuralNetworkImage Restore(string path)
         {
+            if (path == null)
+                throw new ArgumentNullException(nameof(path));
+
             using var stream = File.OpenRead(path);
+            return Restore(stream);
+        }
+        public static NeuralNetworkImage Restore(FileStream stream)
+        {
+            if (stream == null)
+                throw new ArgumentNullException(nameof(stream));
 
             // 1: read version: 2-bytes
             var buffer = new byte[2];
@@ -94,6 +117,5 @@ namespace Photon.NeuralNetwork.Opertat
 
             return new NeuralNetworkImage(layers, error, input_convertor, output_convertor, null);
         }
-
     }
 }
