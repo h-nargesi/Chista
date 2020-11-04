@@ -16,7 +16,7 @@ namespace Photon.NeuralNetwork.Opertat.Debug.Config
         private const string certainty_factor = "certainty-factor";
         private const string dropout_factor = "dropout-factor";
 
-        public string ImagesPathDefault { get; set; } = "images/";
+        public string ImagesPathDefault { get; set; } = "";
         public string ImagesPath
         {
             get { return GetSetting(images_path, ImagesPathDefault); }

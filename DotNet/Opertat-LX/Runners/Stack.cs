@@ -20,6 +20,8 @@ namespace Photon.NeuralNetwork.Opertat.Debug
         public const string NAME = "stk";
         public override string Name => NAME;
 
+        private long offset_interval, last_printing_time = DateTime.Now.Ticks;
+        private int record_count;
         private int company_step = 0, last_instrument = 0;
         private List<Step> cumulative_frequency;
         private SqlCommand sqlite;
@@ -192,6 +194,9 @@ namespace Photon.NeuralNetwork.Opertat.Debug
             }
             result /= Progresses.Count;
 
+            offset_interval += DateTime.Now.Ticks - last_printing_time;
+            record_count++;
+
             print = $"#{Offset / Count},{Offset % Count}:\r\n\t" +
                 $"model={(record.training ? "training" : "validation")} " +
                 $"{setting.Brain.ImagesCount} brain(s)\r\n\t" +
@@ -200,9 +205,12 @@ namespace Photon.NeuralNetwork.Opertat.Debug
                 $"output={Print(record.result[0], 3):R}\t" +
                 $"predict,avg={Print(result, 3):R}\r\n\t" +
                 $"data loading={GetDurationString(record.duration.Value)}\t" +
-                $"prediction={GetDurationString(duration)}";
+                $"prediction={GetDurationString(duration)}\r\n" +
+                $"*\tleft-time={GetDurationString(offset_interval / record_count * (Count - Offset))}";
 
-            if(clearing == null) Debugger.Console.CommitLine();
+            last_printing_time = DateTime.Now.Ticks;
+
+            if (clearing == null) Debugger.Console.CommitLine();
             else Debugger.Console.WriteWord(clearing);
             Debugger.Console.WriteWord(print);
         }

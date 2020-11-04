@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Globalization;
 using System.Text.RegularExpressions;
+using Photon.NeuralNetwork.Opertat.Serializer;
 
 namespace Photon.NeuralNetwork.Opertat.Debug
 {
