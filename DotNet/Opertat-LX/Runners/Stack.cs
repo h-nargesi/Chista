@@ -5,13 +5,12 @@ using System.Data;
 using System.Data.SqlClient;
 using System.Threading.Tasks;
 using System.IO;
+using System.Runtime.InteropServices.WindowsRuntime;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Threading;
-using Newtonsoft.Json.Linq;
 using Photon.NeuralNetwork.Opertat.Implement;
 using Photon.NeuralNetwork.Opertat.Debug.Config;
-using System.Runtime.InteropServices.WindowsRuntime;
 
 namespace Photon.NeuralNetwork.Opertat.Debug
 {
@@ -206,7 +205,7 @@ namespace Photon.NeuralNetwork.Opertat.Debug
                 $"predict,avg={Print(result, 3):R}\r\n\t" +
                 $"data loading={GetDurationString(record.duration.Value)}\t" +
                 $"prediction={GetDurationString(duration)}\r\n" +
-                $"*\tleft-time={GetDurationString(offset_interval / record_count * (Count - Offset))}";
+                $":\tleft-time={GetDurationString(offset_interval / record_count * (Count - Offset))}";
 
             last_printing_time = DateTime.Now.Ticks;
 
