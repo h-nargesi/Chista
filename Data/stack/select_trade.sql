@@ -1,9 +1,9 @@
 use RahavardNovin3;
 go
 
-declare @ID int = 13;
-declare @Type char(1) = 'X';
-declare @Offset bigint = 1900;
+declare @ID int = 107;
+declare @Type char(1) = 'V';
+declare @Offset bigint = 299;
 
 --create or alter procedure GetTrade  @ID int, @Type char(1), @Offset bigint as
 
@@ -147,11 +147,11 @@ where		InstrumentID = @ID and DateTimeEn between EndDateEn and StartDateEn
          , cast(p.Section as varchar) + '-' + cast(p.Ranking as varchar) as SectionString
          , count(*) as Quantity
 		 
-      from Pattern p left join label
+      from ristriction, Pattern p left join label
 	    on p.Section = label.Section and p.Ranking = label.Ranking
   group by p.Section, p.Ranking
 )
 
---select * from ristriction
+--select * from pointer
 select * from section order by Section, Ranking
 --select ChangePercent from section order by Section, Ranking
