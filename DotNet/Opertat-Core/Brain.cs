@@ -245,7 +245,7 @@ namespace Photon.NeuralNetwork.Opertat
                 flash.SignalsSum[i] = layers[i].Synapse.Multiply(signals) + layers[i].Bias;
                 // apply sigmoind function on results
                 signals = layers[i].Conduction.Conduct(flash, i);
-#if NaN && DEBUG
+#if NaN
                 NanTest(signals);
                 //flash.SignalsExtra[0][i]
 #endif
@@ -299,7 +299,7 @@ namespace Photon.NeuralNetwork.Opertat
             return result;
         }
 
-#if NaN && DEBUG
+#if NaN
         public static void NanTest(Layer layer)
         {
             NanTest(layer.Synapse);
@@ -310,17 +310,13 @@ namespace Photon.NeuralNetwork.Opertat
             for (int i = 0; i < matrix.RowCount; i++)
                 for (int j = 0; j < matrix.ColumnCount; j++)
                     if (double.IsNaN(matrix[i, j]) || double.IsInfinity(matrix[i, j]))
-                    {
-
-                    }
+                        throw new Exception("NaN value");
         }
         public static void NanTest(Vector<double> vector)
         {
             for (int i = 0; i < vector.Count; i++)
                 if (double.IsNaN(vector[i]) || double.IsInfinity(vector[i]))
-                {
-
-                }
+                    throw new Exception("NaN value");
         }
 #endif
     }

@@ -34,13 +34,13 @@ namespace Photon.NeuralNetwork.Opertat.Trainer
             CurrentAccuracy = total_accuracy / record_count;
             LastPredict = predict;
         }
-        public bool FinishCurrentState(bool is_validated)
+        public bool FinishCurrentState(bool is_training)
         {
             record_count = 0;
             total_accuracy = 0;
             CurrentAccuracy = 0;
 
-            if (!is_validated) return true;
+            if (is_training) return false;
             else return history.AddProgress(this);
         }
 

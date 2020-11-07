@@ -124,15 +124,13 @@ namespace Photon.NeuralNetwork.Opertat.Trainer
                                     var to_out_of_line = new List<Progress>();
 
                                     foreach (var progress in progresses)
-                                    {
-                                        var finished = progress.FinishCurrentState(!record.training);
-                                        if (finished) to_out_of_line.Add(progress);
-                                    }
+                                        if (progress.FinishCurrentState(record.training))
+                                            to_out_of_line.Add(progress);
 
                                     foreach (var pr in to_out_of_line)
                                     {
                                         progresses.Remove(pr);
-                                        out_of_line.Add(new BrainInfo(pr.BestBrainImage, pr.BestBrainAccuracy));
+                                        out_of_line.Add(new BrainInfo(pr.BestBrainImage, -1));
                                     }
                                 }
                             }
@@ -141,6 +139,9 @@ namespace Photon.NeuralNetwork.Opertat.Trainer
                             // call event
                             ReflectFinished(record, DateTime.Now.Ticks - start_time);
                             prv_was_training = record.training;
+
+                            lock (progresses)
+                                if (progresses.Count == 0) return;
                         }
 
                         // next offset
