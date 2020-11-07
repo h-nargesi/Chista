@@ -1,9 +1,9 @@
 use RahavardNovin3;
 go
 
-declare @ID int = 107;
-declare @Type char(1) = 'V';
-declare @Offset bigint = 299;
+declare @ID int = 13;
+declare @Type char(1) = 'X';
+declare @Offset bigint = 1924;
 
 --create or alter procedure GetTrade  @ID int, @Type char(1), @Offset bigint as
 
@@ -152,6 +152,6 @@ where		InstrumentID = @ID and DateTimeEn between EndDateEn and StartDateEn
   group by p.Section, p.Ranking
 )
 
---select * from pointer
-select * from section order by Section, Ranking
+select * from pointer
+--select * from section order by Section, Ranking
 --select ChangePercent from section order by Section, Ranking

@@ -252,13 +252,13 @@ namespace Photon.NeuralNetwork.Opertat.Debug
 
         private readonly static string sql_counting = $@"
 select		InstrumentID,
-            sum(iif(RecordType = 'X', 1, 0)) as TrainingCount,
-            sum(iif(RecordType = 'V', 1, 0)) as ValidationCount
+            sum(iif(RecordType = 'X', 1, 0)) - {RESULT_COUNT} as TrainingCount,
+            sum(iif(RecordType = 'V', 1, 0)) - {RESULT_COUNT} as ValidationCount
 from		Trade
 where		RecordType is not null
 group by	InstrumentID
-having      sum(iif(RecordType = 'X', 1, 0)) > 0
-        and sum(iif(RecordType = 'V', 1, 0)) > 0
+having      sum(iif(RecordType = 'X', 1, 0)) > {RESULT_COUNT}
+        and sum(iif(RecordType = 'V', 1, 0)) > {RESULT_COUNT}
 order by    InstrumentID";
         #endregion
 
