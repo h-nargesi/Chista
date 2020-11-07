@@ -8,7 +8,8 @@ namespace Photon.NeuralNetwork.Opertat.Serializer
 {
     public static class TrainProcessSerializer
     {
-        public const ushort VERSION = 1;
+        public const byte FILE_TYPE = 2;
+        public const ushort VERSION = 3;
 
         public static void Serialize(string path, IReadOnlyList<IProgress> progresses)
         {
@@ -31,7 +32,7 @@ namespace Photon.NeuralNetwork.Opertat.Serializer
             byte[] buffer;
 
             // serialize version
-            buffer = BitConverter.GetBytes(VERSION); // 2-bytes
+            buffer = BitConverter.GetBytes(FileType.GetFileSign(FILE_TYPE, VERSION)); // 2-bytes
             stream.Write(buffer, 0, buffer.Length);
 
             // serialize progress count
@@ -92,12 +93,16 @@ namespace Photon.NeuralNetwork.Opertat.Serializer
             // 1: read version: 2-bytes
             var buffer = new byte[2];
             stream.Read(buffer, 0, buffer.Length);
-            var version = BitConverter.ToUInt16(buffer, 0);
+            var (file_type, version) = FileType.GetFileInfo(BitConverter.ToUInt16(buffer, 0));
 
-            return version switch
+            if (file_type != FILE_TYPE && version > 2)
+                throw new Exception("Invalid file type");
+
+            switch (version)
             {
-                VERSION => RestoreLastVersion(stream),
-                _ => throw new Exception("This version of progress list is not supported"),
+                case 2:
+                case VERSION: return RestoreLastVersion(stream);
+                default: throw new Exception("This version of progress list is not supported");
             };
         }
         private static IReadOnlyList<IProgress> RestoreLastVersion(FileStream stream)
