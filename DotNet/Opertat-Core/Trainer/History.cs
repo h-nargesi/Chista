@@ -23,7 +23,7 @@ namespace Photon.NeuralNetwork.Opertat.Trainer
             {
                 history.Clear();
                 history.AddLast(new BrainInfo(progress.Brain.Image(), progress.CurrentAccuracy));
-                return true;
+                return false;
             }
             else
             {
@@ -38,9 +38,9 @@ namespace Photon.NeuralNetwork.Opertat.Trainer
                     prv_accuracy = info.accuracy;
                 }
 
-                if (descenting_count >= 4) return false;
-                else if (history.Count > 10) return false;
-                else return true;
+                if (descenting_count >= 4) return true;
+                else if (history.Count > 10) return true;
+                else return false;
             }
         }
 

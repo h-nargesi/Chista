@@ -40,7 +40,7 @@ namespace Photon.NeuralNetwork.Opertat.Trainer
             total_accuracy = 0;
             CurrentAccuracy = 0;
 
-            if (is_training) return true;
+            if (is_training) return false;
             else return history.AddProgress(this);
         }
 

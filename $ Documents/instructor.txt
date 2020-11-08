@@ -1,0 +1,18 @@
+Epoch
+|	[Progress]
+|
+|	Train
+|	|	[Progress % Epoch] between 0 and TrainCount
+|	|
+|	^
+|
+|	Validation
+|	|	[Progress % Epoch - TrainCount] between 0 and ValidationCount
+|	|
+|	^
+|
+|	Evaliation
+|	|	while there is bain-info without evaluation
+|	|
+|	^
+^

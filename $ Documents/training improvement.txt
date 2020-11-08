@@ -13,7 +13,11 @@ Other Activation Function (Rectified Linear Unit) (P7-M1-L3)
 	OK		(using relu and soft relu)
 ------------------------------------------------------------
 Inputs with zero mean and small equal variance (P2-M4-L2-S19,S23)
+
 Initial weights randomly with zero mean and small equal variance (P2-M4-L2-S19,S23)
+	OK
 Stochastic Gradient Descent (SGD) (P2-M4-L2-S22)
+
 Momentum ... in SGD (P2-M4-L2-S23)
+
 Learning rate decay in SGD (P2-M4-L2-S23)

@@ -36,7 +36,7 @@ namespace Photon.NeuralNetwork.Opertat.Debug
 
                     case "quit": return;
                     case "show":
-                        if(param != null)
+                        if (param != null)
                         {
                             if (param.StartsWith("\""))
                                 param = param.Substring(1);
