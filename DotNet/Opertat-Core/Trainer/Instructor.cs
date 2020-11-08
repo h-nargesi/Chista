@@ -23,11 +23,11 @@ namespace Photon.NeuralNetwork.Opertat.Trainer
         private readonly List<BrainInfo> out_of_line = new List<BrainInfo>();
         public IReadOnlyList<IProgress> Progresses => progresses;
         public IReadOnlyList<BrainInfo> OutOfLine => out_of_line;
-        public void BrainAdd(Brain brain)
+        public void AddProgress(Brain brain)
         {
             lock (progresses) progresses.Add(new Progress(brain));
         }
-        public void BrainRemove(int index)
+        public void RemoveProgress(int index)
         {
             lock (progresses) progresses.RemoveAt(index);
         }
@@ -52,6 +52,14 @@ namespace Photon.NeuralNetwork.Opertat.Trainer
                     if (ibrain is BrainInfo brn)
                         this.out_of_line.Add(brn);
                     else throw new Exception("Invalid brain-info type.");
+        }
+        public void AddBrainInfo(BrainInfo brain)
+        {
+            lock (progresses) out_of_line.Add(brain);
+        }
+        public void RemoveBrainInfo(int index)
+        {
+            lock (progresses) out_of_line.RemoveAt(index);
         }
         #endregion
 
@@ -125,14 +133,14 @@ namespace Photon.NeuralNetwork.Opertat.Trainer
 
                                     foreach (var progress in progresses)
                                     {
-                                        var finished = progress.FinishCurrentState(!record.training);
+                                        var finished = progress.FinishCurrentState(record.training);
                                         if (finished) to_out_of_line.Add(progress);
                                     }
 
                                     foreach (var pr in to_out_of_line)
                                     {
                                         progresses.Remove(pr);
-                                        out_of_line.Add(new BrainInfo(pr.BestBrainImage, pr.BestBrainAccuracy));
+                                        out_of_line.Add(new BrainInfo(pr.BestBrainImage, -1));
                                     }
                                 }
                             }

@@ -63,7 +63,7 @@ namespace Photon.NeuralNetwork.Opertat.Debug
 
                 var images = BrainInitializer();
                 foreach (var image in images)
-                    BrainAdd(new Brain(image)
+                    AddProgress(new Brain(image)
                     {
                         LearningFactor = setting.Brain.LearningFactor,
                         CertaintyFactor = setting.Brain.CertaintyFactor,

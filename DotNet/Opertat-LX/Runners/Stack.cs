@@ -93,6 +93,9 @@ namespace Photon.NeuralNetwork.Opertat.Debug
             }
 
             var images = new NeuralNetworkImage[setting.Brain.ImagesCount];
+
+
+
             var conduction = setting.Brain.Layers.Conduction == "soft-relu" ?
                 (IConduction)new SoftReLU() : new ReLU();
             var output = setting.Brain.Layers.OutputConduction == "straight" ?
