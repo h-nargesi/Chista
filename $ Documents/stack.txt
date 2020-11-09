@@ -3,26 +3,27 @@ result record:
 	 1-4:	 20
 
 this year:
-   [weeks]  [nodes count]
-      1-8:   (/1) 40 = 8 * 5
-     9-16:   (/2) 20 = 4 * 5
-    17-24:   (/4) 10 = 2 * 5
-    25-32:   (/8)  5 = 1 * 5
-    ------------------------
-                  75 nodes
+   [weeks ] [-- nodes count --]
+     1-36:   (/1) 180 = 36 * 5
+    --------------------------
+                  180 + 3 nodes
 previous years:
     before corresponding day
     after corresponding day
 
    [before][after] [sum]   [nodes count]
+    8 * 5   4 * 5   60      60 (60/1)
     8 * 5   4 * 5   60      30 (60/2)
     8 * 5   4 * 5   60      20 (60/3)
-    8 * 5   4 * 5   60      15 (60/4)
     -----------------------------------
-                            65 nodes
+                           110 nodes
+
+BSN for instrunment id
+	integer (4 bytes) (32 bites)
+					   32 nodes
 
 total sum:
-    20 + 75 + 65 = 160 nodes
+    20 + 183 + 110 + 32 = 345 nodes
 ========================================
 
 result record:
@@ -54,4 +55,31 @@ BSN for instrunment id
 
 total sum:
     20 + 125 + 65 + 32 = 242 nodes
+========================================
+
+result record:
+	[weeks]	[nodes]
+	 1-4:	 20
+
+this year:
+   [weeks]  [nodes count]
+      1-8:   (/1) 40 = 8 * 5
+     9-16:   (/2) 20 = 4 * 5
+    17-24:   (/4) 10 = 2 * 5
+    25-32:   (/8)  5 = 1 * 5
+    ------------------------
+                  75 nodes
+previous years:
+    before corresponding day
+    after corresponding day
+
+   [before][after] [sum]   [nodes count]
+    8 * 5   4 * 5   60      30 (60/2)
+    8 * 5   4 * 5   60      20 (60/3)
+    8 * 5   4 * 5   60      15 (60/4)
+    -----------------------------------
+                            65 nodes
+
+total sum:
+    20 + 75 + 65 = 160 nodes
 ========================================
