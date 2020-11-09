@@ -1,1 +1,5 @@
-implement validation to break training
+test file type signature
+implement binary state neurons (BSN)
+increase stack input size
+implement validation to break training (training, validation, evaluation process)
+implement genetic algorithm

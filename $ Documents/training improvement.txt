@@ -2,7 +2,7 @@ Seperate training data, validation data and test data (P2-M1-L1-S7,P2-M4-L2-S20)
 --------------------------------------------------------------------------------
 Complexity (Find the best neurons' architecte) (P7-M1-L3)
 Early Termination (train until increasing errors of test set) (P7-M1-L3)
-	TEST	check validation after each epoch
+	TODO	check validation after each epoch
 Regularization (change error function. add L1 and L2) (P7-M1-L3, P2-M5-L1-S9)
 	OK
 Dropout (turn off some nodes in each epoch) (P7-M1-L3, P2-M5-L1-S11,S12)
@@ -13,7 +13,7 @@ Other Activation Function (Rectified Linear Unit) (P7-M1-L3)
 	OK		(using relu and soft relu)
 ------------------------------------------------------------
 Inputs with zero mean and small equal variance (P2-M4-L2-S19,S23)
-
+	OK
 Initial weights randomly with zero mean and small equal variance (P2-M4-L2-S19,S23)
 	OK
 Stochastic Gradient Descent (SGD) (P2-M4-L2-S22)
