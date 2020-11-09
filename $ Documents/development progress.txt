@@ -1,1 +1,3 @@
-implement validation to break training
+implement validation to break training (training, validation, evaluation process)
+implement genetic algorithm
+implement binary mapping
