@@ -120,8 +120,7 @@ namespace Photon.NeuralNetwork.Opertat.Debug
                 var result = new double[RESULT_COUNT];
                 var signal = new double[SIGNAL_COUNT_TOTAL];
 
-                uint i = 0;
-                int company_id;
+                int r = 0, s = 0, company_id;
                 bool is_training;
                 (offset, company_id, is_training) = FindCompany(offset);
 
@@ -135,15 +134,16 @@ namespace Photon.NeuralNetwork.Opertat.Debug
                         using var reader = sqlite.ExecuteReader();
                         while (reader.Read())
                         {
-                            if (i < RESULT_COUNT) result[i] = (double)(decimal)reader[0];
-                            else if (i - RESULT_COUNT < SIGNAL_COUNT_TOTAL)
-                                signal[i - RESULT_COUNT] = (double)(decimal)reader[0];
+                            if (r < RESULT_COUNT) result[r++] = (double)(decimal)reader[0];
+                            else if (s < SIGNAL_COUNT_TOTAL) signal[s++] = (double)(decimal)reader[0];
                             else break;
-                            i++;
                         }
                     }
 
-                if (i < RESULT_COUNT + SIGNAL_COUNT_TOTAL)
+                if (s <= SIGNAL_COUNT_TOTAL - INSTRUNMENT_ID)
+                    Convertor.BinaryState(company_id, signal, ref s);
+
+                if (r < RESULT_COUNT || s < SIGNAL_COUNT_TOTAL)
                     throw new Exception($"Invalid data size ({offset}).");
 
                 return new Record(is_training, signal, result, company_id, DateTime.Now.Ticks - start_time);
@@ -166,7 +166,7 @@ namespace Photon.NeuralNetwork.Opertat.Debug
                     right = cumulative_frequency[company_step + 1];
                 else return (offset - left.start_point, left.instrument, left.is_training);
 
-                if (left.start_point <= offset && offset < right.start_point) 
+                if (left.start_point <= offset && offset < right.start_point)
                     return (offset - left.start_point, left.instrument, left.is_training);
                 else if (offset == right.start_point)
                 {
@@ -234,7 +234,7 @@ namespace Photon.NeuralNetwork.Opertat.Debug
         #region SQL Queries
         private const int YEARS_COUNT = 3;
         private const int RESULT_COUNT = 20;
-        private const int SIGNAL_STEP_COUNT = 60;
+        private const int SIGNAL_STEP_COUNT = 183;
         private const int SIGNAL_STEP_LAST_YEARS = 60;
         private const int INSTRUNMENT_ID = 32;
         private static readonly int SIGNAL_COUNT_BASICAL;
@@ -243,14 +243,14 @@ namespace Photon.NeuralNetwork.Opertat.Debug
 
         static Stack()
         {
-            SIGNAL_COUNT_BASICAL = SIGNAL_STEP_COUNT +
+            SIGNAL_COUNT_BASICAL = SIGNAL_STEP_COUNT;/* +
                 (int)Math.Ceiling(SIGNAL_STEP_COUNT / 2.0) +
                 (int)Math.Ceiling(SIGNAL_STEP_COUNT / 3.0) +
-                (int)Math.Ceiling(SIGNAL_STEP_COUNT / 4.0);
+                (int)Math.Ceiling(SIGNAL_STEP_COUNT / 4.0);*/
 
             SIGNAL_COUNT_LAST_YEARS = 0;
             for (int y = 1; y <= YEARS_COUNT;)
-                SIGNAL_COUNT_LAST_YEARS += (int)Math.Ceiling(SIGNAL_STEP_LAST_YEARS / (double)(++y));
+                SIGNAL_COUNT_LAST_YEARS += (int)Math.Ceiling(SIGNAL_STEP_LAST_YEARS / (double)(y++));
             SIGNAL_COUNT_TOTAL = SIGNAL_COUNT_BASICAL + SIGNAL_COUNT_LAST_YEARS + INSTRUNMENT_ID;
         }
 

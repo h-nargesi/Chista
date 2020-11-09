@@ -1,15 +1,15 @@
 use RahavardNovin3;
 go
 
-declare @ID int = 13;
+declare @ID int = 58;
 declare @Type char(1) = 'X';
-declare @Offset bigint = 1924;
+declare @Offset bigint = 0;
 
 --create or alter procedure GetTrade  @ID int, @Type char(1), @Offset bigint as
 
 /*
 RESULT_COUNT = 20;
-SIGNAL_STEP_COUNT = 60;
+SIGNAL_STEP_COUNT = 183;
 SIGNAL_LAST_YEARS = 60;
 YEARS_COUNT = 3;
 */
@@ -94,43 +94,42 @@ where		InstrumentID = @ID and DateTimeEn between EndDateEn and StartDateEn
     select	case
 				when Ranking <= 20/*RESULT_COUNT*/
 				then 0
-				-----------------------------------------------------------
-				when Ranking <= 20/*RESULT_COUNT*/ + 60/*SIGNAL_STEP_COUNT*/
+				---------------------------------------------
+				when period_start > 1 then 10 + year_diff - 1
+				---------------------------------------------------------------
+				when Ranking <= 20/*RESULT_COUNT*2*/ + 183/*SIGNAL_STEP_COUNT*/
 				then 1
-				-----------------------------------------------------------
-				when Ranking <= 20/*RESULT_COUNT*/ + 120/*SIGNAL_STEP_COUNT*2*/
-				then 2
-				-----------------------------------------------------------
-				when Ranking <= 20/*RESULT_COUNT*/ + 180/*SIGNAL_STEP_COUNT*3*/
-				then 3
-				-----------------------------------------------------------
-				when Ranking <= 20/*RESULT_COUNT*/ + 240/*SIGNAL_STEP_COUNT*4*/
-				then 4
-				-----------------------------------------------------------
-				when Ranking > 20/*RESULT_COUNT*/ + 240/*SIGNAL_STEP_COUNT*4*/ and period_start is not null
-				then 10 + year_diff - 1
-				-------------------------------------------------------------------------------
+				----------------------------------------------------------------
+				--when Ranking <= 40/*RESULT_COUNT*/ + 80/*SIGNAL_STEP_COUNT*2*/
+				--then 2
+				----------------------------------------------------------------
+				--when Ranking <= 40/*RESULT_COUNT*/ + 120/*SIGNAL_STEP_COUNT*3*/
+				--then 3
+				----------------------------------------------------------------
+				--when Ranking <= 40/*RESULT_COUNT*/ + 160/*SIGNAL_STEP_COUNT*4*/
+				--then 4
+				----------------------------------------------------------------
 				else null
 			end as Section,
 			case
 				when Ranking <= 20/*RESULT_COUNT*/
 				then Ranking
-				-----------------------------------------------------------
-				when Ranking <= 20/*RESULT_COUNT*/ + 60/*SIGNAL_STEP_COUNT*/
+				------------------------------------------------------------
+				when period_start > 1
+				then floor((Ranking - period_start + year_diff) / (year_diff - 1))
+				---------------------------------------------------------------
+				when Ranking <= 20/*RESULT_COUNT*2*/ + 183/*SIGNAL_STEP_COUNT*/
 				then (Ranking - 21) + 1
-				-----------------------------------------------------------
-				when Ranking <= 20/*RESULT_COUNT*/ + 120/*SIGNAL_STEP_COUNT*2*/
-				then floor((Ranking - 61) / 2) + 1
-				-----------------------------------------------------------
-				when Ranking <= 20/*RESULT_COUNT*/ + 180/*SIGNAL_STEP_COUNT*3*/
-				then floor((Ranking - 101) / 4) + 1
-				-----------------------------------------------------------
-				when Ranking <= 20/*RESULT_COUNT*/ + 240/*SIGNAL_STEP_COUNT*4*/
-				then floor((Ranking - 141) / 8) + 1
-				-----------------------------------------------------------
-				when Ranking > 20/*RESULT_COUNT*/ + 240/*SIGNAL_STEP_COUNT*4*/ and period_start is not null
-				then floor((Ranking - period_start + year_diff) / year_diff)
-				-------------------------------------------------------------------------------
+				----------------------------------------------------------------
+				--when Ranking <= 40/*RESULT_COUNT*/ + 80/*SIGNAL_STEP_COUNT*2*/
+				--then floor((Ranking - 61) / 2) + 1
+				----------------------------------------------------------------
+				--when Ranking <= 40/*RESULT_COUNT*/ + 120/*SIGNAL_STEP_COUNT*3*/
+				--then floor((Ranking - 101) / 4) + 1
+				----------------------------------------------------------------
+				--when Ranking <= 40/*RESULT_COUNT*/ + 160/*SIGNAL_STEP_COUNT*4*/
+				--then floor((Ranking - 141) / 8) + 1
+				----------------------------------------------------------------
 				else null
 			end as Ranking,
 			annual.DateTimeEn,
@@ -152,6 +151,6 @@ where		InstrumentID = @ID and DateTimeEn between EndDateEn and StartDateEn
   group by p.Section, p.Ranking
 )
 
-select * from pointer
---select * from section order by Section, Ranking
+--select * from pointer
+select * from section order by DateTimeEn desc
 --select ChangePercent from section order by Section, Ranking
