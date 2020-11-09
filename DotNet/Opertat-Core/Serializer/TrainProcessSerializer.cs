@@ -8,8 +8,9 @@ namespace Photon.NeuralNetwork.Opertat.Serializer
 {
     public static class TrainProcessSerializer
     {
-        public const byte FILE_TYPE = 2;
-        public const ushort VERSION = 3;
+        public const string FILE_TYPE_SIGNATURE_STRING = "Opertat Training Process";
+        public const byte SECTION_TYPE = 2;
+        public const ushort VERSION = 4;
 
         public static void Serialize(string path, IReadOnlyList<IProgress> progresses)
         {
@@ -20,6 +21,10 @@ namespace Photon.NeuralNetwork.Opertat.Serializer
 
             using var stream = File.Create(path);
             stream.Flush();
+
+            // serialize file signature
+            stream.Write(FILE_TYPE_SIGNATURE);
+
             Serialize(stream, progresses);
         }
         public static void Serialize(FileStream stream, IReadOnlyList<IProgress> progresses)
@@ -32,7 +37,7 @@ namespace Photon.NeuralNetwork.Opertat.Serializer
             byte[] buffer;
 
             // serialize version
-            buffer = BitConverter.GetBytes(FileType.GetFileSign(FILE_TYPE, VERSION)); // 2-bytes
+            buffer = BitConverter.GetBytes(SectionType.GetSectionSign(SECTION_TYPE, VERSION)); // 2-bytes
             stream.Write(buffer, 0, buffer.Length);
 
             // serialize progress count
@@ -83,9 +88,29 @@ namespace Photon.NeuralNetwork.Opertat.Serializer
                 throw new ArgumentNullException(nameof(path));
 
             using var stream = File.OpenRead(path);
-            return Restore(stream);
+
+            // read file signature
+            var buffer = new byte[FILE_TYPE_SIGNATURE.Length];
+            stream.Read(buffer, 0, buffer.Length);
+            var file_type_diignature = Encoding.ASCII.GetString(buffer);
+
+            // check file signature
+            bool valid_sign;
+            if (file_type_diignature != FILE_TYPE_SIGNATURE_STRING)
+            {
+                valid_sign = false;
+                stream.Seek(0, SeekOrigin.Begin);
+            }
+            else valid_sign = true;
+
+            // restore file
+            return Restore(stream, valid_sign);
         }
         public static IReadOnlyList<IProgress> Restore(FileStream stream)
+        {
+            return Restore(stream, true);
+        }
+        private static IReadOnlyList<IProgress> Restore(FileStream stream, bool valid_sign)
         {
             if (stream == null)
                 throw new ArgumentNullException(nameof(stream), "The writer stream is not defined");
@@ -93,14 +118,18 @@ namespace Photon.NeuralNetwork.Opertat.Serializer
             // 1: read version: 2-bytes
             var buffer = new byte[2];
             stream.Read(buffer, 0, buffer.Length);
-            var (file_type, version) = FileType.GetFileInfo(BitConverter.ToUInt16(buffer, 0));
+            var (section_type, version) = SectionType.GetSectionInfo(BitConverter.ToUInt16(buffer, 0));
 
-            if (file_type != FILE_TYPE && version > 2)
-                throw new Exception("Invalid file type");
+            if (section_type != SECTION_TYPE && version > 2)
+                throw new Exception("Invalid section type");
+
+            if (!valid_sign && version > 4)
+                throw new Exception("Invalid file signature");
 
             switch (version)
             {
                 case 2:
+                case 3:
                 case VERSION: return RestoreLastVersion(stream);
                 default: throw new Exception("This version of progress list is not supported");
             };
@@ -145,6 +174,13 @@ namespace Photon.NeuralNetwork.Opertat.Serializer
             }
 
             return progress;
+        }
+
+
+        private readonly static byte[] FILE_TYPE_SIGNATURE;
+        static TrainProcessSerializer()
+        {
+            FILE_TYPE_SIGNATURE = Encoding.ASCII.GetBytes(FILE_TYPE_SIGNATURE_STRING);
         }
     }
 }

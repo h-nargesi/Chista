@@ -1,12 +1,15 @@
 using System;
 using System.IO;
+using System.Runtime.InteropServices;
+using System.Text;
 
 namespace Photon.NeuralNetwork.Opertat.Serializer
 {
     public static class NeuralNetworkSerializer
     {
-        public const byte FILE_TYPE = 1;
-        public const ushort VERSION = 4;
+        public const string FILE_TYPE_SIGNATURE_STRING = "Opertat Neural Network Image";
+        public const byte SECTION_TYPE = 1;
+        public const ushort VERSION = 5;
 
         public static void Serialize(string path, NeuralNetworkImage image)
         {
@@ -17,6 +20,10 @@ namespace Photon.NeuralNetwork.Opertat.Serializer
 
             using var stream = File.Create(path);
             stream.Flush();
+
+            // serialize file signature
+            stream.Write(FILE_TYPE_SIGNATURE);
+
             Serialize(stream, image);
         }
         public static void Serialize(FileStream stream, NeuralNetworkImage image)
@@ -27,7 +34,7 @@ namespace Photon.NeuralNetwork.Opertat.Serializer
                 throw new ArgumentNullException(nameof(image));
 
             // 1: serialize version
-            var buffer = BitConverter.GetBytes(FileType.GetFileSign(FILE_TYPE, VERSION)); // 2-bytes
+            var buffer = BitConverter.GetBytes(SectionType.GetSectionSign(SECTION_TYPE, VERSION)); // 2-bytes
             stream.Write(buffer, 0, buffer.Length);
 
             // 2: serializer layers
@@ -55,9 +62,29 @@ namespace Photon.NeuralNetwork.Opertat.Serializer
                 throw new ArgumentNullException(nameof(path));
 
             using var stream = File.OpenRead(path);
-            return Restore(stream);
+
+            // read file signature
+            var buffer = new byte[FILE_TYPE_SIGNATURE.Length];
+            stream.Read(buffer, 0, buffer.Length);
+            var file_type_diignature = Encoding.ASCII.GetString(buffer);
+
+            // check file signature
+            bool valid_sign;
+            if (file_type_diignature != FILE_TYPE_SIGNATURE_STRING)
+            {
+                valid_sign = false;
+                stream.Seek(0, SeekOrigin.Begin);
+            }
+            else valid_sign = true;
+
+            // restore file
+            return Restore(stream, valid_sign);
         }
         public static NeuralNetworkImage Restore(FileStream stream)
+        {
+            return Restore(stream, true);
+        }
+        private static NeuralNetworkImage Restore(FileStream stream, bool valid_sign)
         {
             if (stream == null)
                 throw new ArgumentNullException(nameof(stream));
@@ -65,16 +92,20 @@ namespace Photon.NeuralNetwork.Opertat.Serializer
             // 1: read version: 2-bytes
             var buffer = new byte[2];
             stream.Read(buffer, 0, buffer.Length);
-            var (file_type, version) = FileType.GetFileInfo(BitConverter.ToUInt16(buffer, 0));
+            var (section_type, version) = SectionType.GetSectionInfo(BitConverter.ToUInt16(buffer, 0));
 
-            if (file_type != FILE_TYPE && version > 3)
-                throw new Exception("Invalid file type");
+            if (section_type != SECTION_TYPE && version > 3)
+                throw new Exception("Invalid section type");
+
+            if (!valid_sign && version > 4)
+                throw new Exception("Invalid file signature");
 
             switch (version)
             {
                 case 1: throw new Exception("The 1st version of nni is not supported any more.");
                 case 2: return RestoreVer2(stream);
                 case 3:
+                case 4:
                 case VERSION: return RestoreLastVersion(stream);
                 default: throw new Exception("This version of nni is not supported.");
             };
@@ -121,6 +152,13 @@ namespace Photon.NeuralNetwork.Opertat.Serializer
             var output_convertor = function.RestoreIDataConvertor();
 
             return new NeuralNetworkImage(layers, error, input_convertor, output_convertor, null);
+        }
+
+
+        private readonly static byte[] FILE_TYPE_SIGNATURE;
+        static NeuralNetworkSerializer()
+        {
+            FILE_TYPE_SIGNATURE = Encoding.ASCII.GetBytes(FILE_TYPE_SIGNATURE_STRING);
         }
     }
 }
