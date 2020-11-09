@@ -234,8 +234,9 @@ namespace Photon.NeuralNetwork.Opertat.Debug
         #region SQL Queries
         private const int YEARS_COUNT = 3;
         private const int RESULT_COUNT = 20;
-        private const int SIGNAL_STEP_COUNT = 40;
-        private const int SIGNAL_STEP_LAST_YEARS = RESULT_COUNT + SIGNAL_STEP_COUNT;
+        private const int SIGNAL_STEP_COUNT = 60;
+        private const int SIGNAL_STEP_LAST_YEARS = 60;
+        private const int INSTRUNMENT_ID = 32;
         private static readonly int SIGNAL_COUNT_BASICAL;
         private static readonly int SIGNAL_COUNT_LAST_YEARS;
         private static readonly int SIGNAL_COUNT_TOTAL;
@@ -244,13 +245,13 @@ namespace Photon.NeuralNetwork.Opertat.Debug
         {
             SIGNAL_COUNT_BASICAL = SIGNAL_STEP_COUNT +
                 (int)Math.Ceiling(SIGNAL_STEP_COUNT / 2.0) +
-                (int)Math.Ceiling(SIGNAL_STEP_COUNT / 4.0) +
-                (int)Math.Ceiling(SIGNAL_STEP_COUNT / 8.0);
+                (int)Math.Ceiling(SIGNAL_STEP_COUNT / 3.0) +
+                (int)Math.Ceiling(SIGNAL_STEP_COUNT / 4.0);
 
             SIGNAL_COUNT_LAST_YEARS = 0;
             for (int y = 1; y <= YEARS_COUNT;)
                 SIGNAL_COUNT_LAST_YEARS += (int)Math.Ceiling(SIGNAL_STEP_LAST_YEARS / (double)(++y));
-            SIGNAL_COUNT_TOTAL = SIGNAL_COUNT_BASICAL + SIGNAL_COUNT_LAST_YEARS;
+            SIGNAL_COUNT_TOTAL = SIGNAL_COUNT_BASICAL + SIGNAL_COUNT_LAST_YEARS + INSTRUNMENT_ID;
         }
 
         private readonly static string sql_counting = $@"
