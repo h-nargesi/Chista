@@ -10,29 +10,54 @@ namespace Photon.NeuralNetwork.Opertat.Trainer
     public abstract class Instructor : IDisposable
     {
         #region Progress Control
+        public uint TrainingCount { get; set; }
+        public uint ValidationCount { get; set; }
+        public uint EvaluationCount { get; set; }
         public uint Offset { get; set; }
-        public uint Count { get; set; }
+        public TraingingStages Stage { get; set; }
         public uint Epoch { get; set; }
-        public uint Tries { get; set; }
+        private (uint progress, TraingingStages stage) GetNextRound()
+        {
+            var progress = Offset + 1;
+            switch (Stage)
+            {
+                case TraingingStages.Training:
+                    if (progress >= TrainingCount)
+                        return (0, TraingingStages.Validation);
+                    else return (progress, Stage);
+
+                case TraingingStages.Validation:
+                    if (progress >= ValidationCount)
+                        return (0, TraingingStages.Evaluation);
+                    else return (progress, Stage);
+
+                case TraingingStages.Evaluation:
+                    if (progress >= EvaluationCount)
+                        return (0, TraingingStages.Training);
+                    else return (progress, Stage);
+
+                default: throw new Exception($"Invalid stage! ({Stage})");
+            }
+        }
         #endregion
 
 
         #region Brain Management
 
-        private readonly List<Progress> progresses = new List<Progress>();
+        private readonly List<TrainProcess> processes = new List<TrainProcess>();
         private readonly List<BrainInfo> out_of_line = new List<BrainInfo>();
-        public IReadOnlyList<IProgress> Progresses => progresses;
+        public IReadOnlyList<ITrainProcess> Processes => processes;
         public IReadOnlyList<BrainInfo> OutOfLine => out_of_line;
         public void AddProgress(Brain brain)
         {
-            lock (progresses) progresses.Add(new Progress(brain));
+            lock (processes) processes.Add(new TrainProcess(brain));
         }
         public void RemoveProgress(int index)
         {
-            lock (progresses) progresses.RemoveAt(index);
+            lock (processes) processes.RemoveAt(index);
         }
         public void LoadProgress(
-            IReadOnlyList<IProgress> progresses,
+            IReadOnlyList<ITrainProcess> progresses,
             IReadOnlyList<BrainInfo> out_of_line)
         {
             if (!Stopped) throw new Exception("The process is not stoped.");
@@ -40,10 +65,10 @@ namespace Photon.NeuralNetwork.Opertat.Trainer
             if (progresses == null)
                 throw new ArgumentNullException(nameof(progresses));
 
-            this.progresses.Clear();
+            this.processes.Clear();
             foreach (var iprg in progresses)
-                if (iprg is Progress prg)
-                    this.progresses.Add(prg);
+                if (iprg is TrainProcess prg)
+                    this.processes.Add(prg);
                 else throw new Exception("Invalid progress type.");
 
             this.out_of_line.Clear();
@@ -55,18 +80,18 @@ namespace Photon.NeuralNetwork.Opertat.Trainer
         }
         public void AddBrainInfo(BrainInfo brain)
         {
-            lock (progresses) out_of_line.Add(brain);
+            lock (processes) out_of_line.Add(brain);
         }
         public void RemoveBrainInfo(int index)
         {
-            lock (progresses) out_of_line.RemoveAt(index);
+            lock (processes) out_of_line.RemoveAt(index);
         }
         #endregion
 
 
         #region Abstract Stuff
         protected abstract void OnInitialize();
-        protected abstract Task<Record> PrepareNextData(uint offset);
+        protected abstract Task<Record> PrepareNextData(uint progress, TraingingStages stage);
         protected abstract void ReflectFinished(Record record, long duration);
         protected abstract void OnError(Exception ex);
         protected abstract void OnStopped();
@@ -83,7 +108,7 @@ namespace Photon.NeuralNetwork.Opertat.Trainer
             return Task.Run(() =>
             {
                 Canceling = false;
-                locker.AcquireWriterLock(2048);
+                locker.AcquireWriterLock(4096);
                 Task<Record> record_geter = null;
 
                 try
@@ -92,18 +117,18 @@ namespace Photon.NeuralNetwork.Opertat.Trainer
                     OnInitialize();
 
                     // fetch next record
-                    record_geter = PrepareNextData(Offset);
-                    var prv_was_training = true;
+                    record_geter = PrepareNextData(Offset, Stage);
 
                     // training loop
-                    while (!Canceling && Offset / Count <= Epoch)
+                    while (!Canceling && processes.Count > 0)
                     {
                         // current record
                         record_geter.Wait();
                         var record = record_geter.Result;
 
                         // fetch next record
-                        record_geter = PrepareNextData((Offset + 1) % Count);
+                        var (offset, stage) = GetNextRound();
+                        record_geter = PrepareNextData(offset, stage);
 
                         if (record != null && record.data != null && record.result != null)
                         {
@@ -112,48 +137,82 @@ namespace Photon.NeuralNetwork.Opertat.Trainer
 
                             if (Canceling) break;
 
-                            lock (progresses)
-                            {
-                                Parallel.ForEach(progresses, (progress, state, index) =>
+                            lock (processes)
+                                switch (Stage)
                                 {
-                                    NeuralNetworkFlash flash = null;
+                                    case TraingingStages.Training:
+                                        Parallel.ForEach(processes, (process, state, index) =>
+                                        {
+                                            // for sure
+                                            if (process.OutOfLine) return;
+                                            // train this neural network
+                                            var flash = process.Brain.Train(record.data, record.result);
+                                            // change progress state
+                                            process.ChangeSatate(flash);
+                                        });
 
-                                    var i = 1;
-                                    if (!record.training) flash = progress.Brain.Test(record.data);
-                                    else do { flash = progress.Brain.Train(record.data, record.result); }
-                                        while (!Canceling && ++i < Tries && flash.Accuracy < 1);
+                                        // if next round is first round of stage
+                                        // if this round is end round of stage
+                                        if (offset == 0)
+                                            foreach (var progress in processes)
+                                                progress.FinishCurrentState(true);
 
-                                    // change progress state
-                                    progress.ChangeSatate(flash);
-                                });
+                                        break;
+                                    case TraingingStages.Validation:
+                                        Parallel.ForEach(processes, (process, state, index) =>
+                                        {
+                                            // for sure
+                                            if (process.OutOfLine) return;
+                                            // test this neural network with validation data
+                                            var flash = process.Brain.Test(record.data);
+                                            // change progress state
+                                            process.ChangeSatate(flash);
+                                        });
 
-                                if (record.training != prv_was_training)
-                                {
-                                    var to_out_of_line = new List<Progress>();
+                                        // if next round is first round of stage
+                                        // if this round is end round of stage
+                                        if (offset == 0)
+                                            foreach (var progress in processes)
+                                                progress.FinishCurrentState(false);
 
-                                    foreach (var progress in progresses)
-                                        if (progress.FinishCurrentState(record.training))
-                                            to_out_of_line.Add(progress);
+                                        break;
+                                    case TraingingStages.Evaluation:
+                                        Parallel.ForEach(processes, (process, state, index) =>
+                                        {
+                                            // do jus out-of-line processes
+                                            if (!process.OutOfLine) return;
+                                            // test this neural network with evaluation data
+                                            var flash = process.Brain.Test(record.data);
+                                            // change progress state
+                                            process.ChangeSatate(flash);
+                                        });
 
-                                    foreach (var pr in to_out_of_line)
-                                    {
-                                        progresses.Remove(pr);
-                                        out_of_line.Add(new BrainInfo(pr.BestBrainImage, -1));
-                                    }
+                                        // if next round is first round of stage
+                                        // if this round is end round of stage
+                                        if (offset == 0)
+                                            for (int p = 0; p < processes.Count;)
+                                                if (!processes[p].OutOfLine) p++;
+                                                else
+                                                {
+                                                    out_of_line.Add(new BrainInfo(
+                                                        processes[p].BestBrainImage,
+                                                        processes[p].BestBrainAccuracy));
+                                                    processes.RemoveAt(p);
+                                                }
+
+                                        break;
                                 }
-                            }
 
                             if (Canceling) break;
                             // call event
                             ReflectFinished(record, DateTime.Now.Ticks - start_time);
-                            prv_was_training = record.training;
-
-                            lock (progresses)
-                                if (progresses.Count == 0) return;
                         }
 
                         // next offset
-                        Offset++;
+                        if (offset == 0 && stage == TraingingStages.Training)
+                            Epoch++;
+                        Offset = offset;
+                        Stage = stage;
                     }
                 }
                 catch (Exception ex) { OnError(ex); }
@@ -163,24 +222,22 @@ namespace Photon.NeuralNetwork.Opertat.Trainer
         public void Dispose()
         {
             Canceling = true;
-            locker.AcquireWriterLock(2048);
-            OnStopped();
-            locker.ReleaseWriterLock();
+            locker.AcquireWriterLock(4096);
+            try { OnStopped(); }
+            finally { locker.ReleaseWriterLock(); }
         }
         #endregion
 
 
         protected class Record
         {
-            public readonly bool training;
             public readonly double[] data, result;
             public readonly object extra;
             public readonly long? duration;
 
-            public Record(bool training, double[] data, double[] result,
+            public Record(double[] data, double[] result,
                 object extra = null, long? duration = null)
             {
-                this.training = training;
                 this.data = data;
                 this.result = result;
                 this.extra = extra;

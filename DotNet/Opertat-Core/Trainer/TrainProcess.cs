@@ -4,19 +4,19 @@ using System.Text;
 
 namespace Photon.NeuralNetwork.Opertat.Trainer
 {
-    class Progress : IProgress
+    class TrainProcess : ITrainProcess
     {
         private readonly History history;
         private int record_count;
         private double total_accuracy;
 
-        public Progress(Brain brain)
+        public TrainProcess(Brain brain)
         {
             Brain = brain ??
                 throw new ArgumentNullException(nameof(brain), "Instructor.Progress: brain is null");
             history = new History();
         }
-        private Progress(Brain brain, History history)
+        private TrainProcess(Brain brain, History history)
         {
             Brain = brain ??
                 throw new ArgumentNullException(nameof(brain), "Instructor.Progress: brain is null");
@@ -26,6 +26,7 @@ namespace Photon.NeuralNetwork.Opertat.Trainer
         public Brain Brain { get; }
         public double CurrentAccuracy { get; private set; }
         public NeuralNetworkFlash LastPredict { get; private set; }
+        public bool OutOfLine { get; private set; }
 
         public void ChangeSatate(NeuralNetworkFlash predict)
         {
@@ -34,14 +35,14 @@ namespace Photon.NeuralNetwork.Opertat.Trainer
             CurrentAccuracy = total_accuracy / record_count;
             LastPredict = predict;
         }
-        public bool FinishCurrentState(bool is_training)
+        public void FinishCurrentState(bool is_training)
         {
             record_count = 0;
             total_accuracy = 0;
             CurrentAccuracy = 0;
 
-            if (is_training) return false;
-            else return history.AddProgress(this);
+            if (!is_training)
+                OutOfLine = history.AddProgress(this);
         }
 
         public NeuralNetworkImage BestBrainImage
@@ -56,18 +57,19 @@ namespace Photon.NeuralNetwork.Opertat.Trainer
         public ProgressState Info()
         {
             return new ProgressState(Brain.Image(), record_count, total_accuracy,
-                history.AccuracyChain(), history.BestBrainInfo?.image);
+                history.AccuracyChain(), history.BestBrainInfo?.image, OutOfLine);
         }
-        public static Progress RestoreInfo(ProgressState state)
+        public static TrainProcess RestoreInfo(ProgressState state)
         {
             if (state == null)
                 throw new ArgumentNullException(nameof(state), "The state is null.");
 
-            var progress = new Progress(
+            var progress = new TrainProcess(
                 new Brain(state.current_image),
                 History.Restore(state.accuracy_chain, state.best_image));
             progress.record_count = state.record_count;
             progress.total_accuracy = state.current_total_accruacy;
+            progress.OutOfLine = state.out_of_line;
 
             return progress;
         }

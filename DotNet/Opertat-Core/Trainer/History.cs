@@ -17,7 +17,7 @@ namespace Photon.NeuralNetwork.Opertat.Trainer
             get { return history.First?.Value; }
         }
 
-        public bool AddProgress(IProgress progress)
+        public bool AddProgress(ITrainProcess progress)
         {
             if (history.Count < 1 || progress.CurrentAccuracy > history.First.Value.accuracy)
             {

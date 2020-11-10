@@ -4,7 +4,7 @@ using System.Text;
 
 namespace Photon.NeuralNetwork.Opertat.Trainer
 {
-    public interface IProgress
+    public interface ITrainProcess
     {
         public Brain Brain { get; }
         public double CurrentAccuracy { get; }
