@@ -15,6 +15,7 @@ namespace Photon.NeuralNetwork.Opertat.Debug.Config
         private const string learning_factor = "learning-factor";
         private const string certainty_factor = "certainty-factor";
         private const string dropout_factor = "dropout-factor";
+        private const string rebuild = "rebuild";
 
         public string ImagesPathDefault { get; set; } = "";
         public string ImagesPath
@@ -50,7 +51,11 @@ namespace Photon.NeuralNetwork.Opertat.Debug.Config
             get { return GetSetting(dropout_factor, DropoutFactorDefault); }
             set { SetSetting(dropout_factor, value); }
         }
-
+        public bool Rebuild
+        {
+            get { return GetSetting(rebuild, false); }
+            set { SetSetting(rebuild, value); }
+        }
 
         private LayersConfigHandler layer_instance;
         public LayersConfigHandler Layers

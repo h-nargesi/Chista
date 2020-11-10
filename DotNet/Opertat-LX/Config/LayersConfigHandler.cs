@@ -10,9 +10,9 @@ namespace Photon.NeuralNetwork.Opertat.Debug.Config
         public LayersConfigHandler(JObject setting) : base(setting) { }
 
         public const string key = "layer";
-        public const string nodes_count = "nodes-count";
-        public const string model_conduction = "conduction";
-        public const string model_output = "output";
+        private const string nodes_count = "nodes-count";
+        private const string model_conduction = "conduction";
+        private const string model_output = "output";
 
         public int[] NodesCount
         {

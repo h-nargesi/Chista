@@ -52,16 +52,5 @@ namespace Photon.NeuralNetwork.Opertat.Debug.Config
                 return brain_instance;
             }
         }
-
-        private ProgressConfigHandler progress_instance;
-        public ProgressConfigHandler Progress
-        {
-            get
-            {
-                if (progress_instance == null)
-                    progress_instance = new ProgressConfigHandler(GetConfig(ProgressConfigHandler.key, null));
-                return progress_instance;
-            }
-        }
     }
 }
