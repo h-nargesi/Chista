@@ -19,7 +19,7 @@ where	ID in (
 update Trade set RecordType = null;
 
 update		Trade
-set			RecordType = 'X'
+set			RecordType = 'T'
 where		DateTimeEn >= @DateLimit
 		and	InstrumentID in (
 				select		InstrumentID
@@ -37,7 +37,7 @@ merge into Trade t
 using (
 	select top 32 percent
 		InstrumentID, Ranking, min(DateTimeEn) as StartDate, max(DateTimeEn) as EndDate,
-		case when avg(RecordType) <= 0.5 then 'V' else 'T' end as RecordType
+		case when avg(RecordType) <= 0.5 then 'V' else 'E' end as RecordType
 	from (
 		select InstrumentID, DateTimeEn, rand(checksum(newid())) RecordType,
 			row_number() over (partition by InstrumentID order by DateTimeEn) / 5 as Ranking,
