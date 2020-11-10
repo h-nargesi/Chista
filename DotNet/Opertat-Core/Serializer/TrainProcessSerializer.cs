@@ -10,14 +10,14 @@ namespace Photon.NeuralNetwork.Opertat.Serializer
     {
         public const string FILE_TYPE_SIGNATURE_STRING = "Opertat Training Process";
         public const byte SECTION_TYPE = 2;
-        public const ushort VERSION = 4;
+        public const ushort VERSION = 5;
 
-        public static void Serialize(string path, IReadOnlyList<IProgress> progresses)
+        public static void Serialize(string path, Instructor instructor)
         {
             if (path == null)
                 throw new ArgumentNullException(nameof(path));
-            if (progresses == null)
-                throw new ArgumentNullException(nameof(progresses));
+            if (instructor == null)
+                throw new ArgumentNullException(nameof(instructor));
 
             using var stream = File.Create(path);
             stream.Flush();
@@ -25,14 +25,14 @@ namespace Photon.NeuralNetwork.Opertat.Serializer
             // serialize file signature
             stream.Write(FILE_TYPE_SIGNATURE);
 
-            Serialize(stream, progresses);
+            Serialize(stream, instructor);
         }
-        public static void Serialize(FileStream stream, IReadOnlyList<IProgress> progresses)
+        public static void Serialize(FileStream stream, Instructor instructor)
         {
             if (stream == null)
                 throw new ArgumentNullException(nameof(stream));
-            if (progresses == null)
-                throw new ArgumentNullException(nameof(progresses));
+            if (instructor == null)
+                throw new ArgumentNullException(nameof(instructor));
 
             byte[] buffer;
 
@@ -40,20 +40,33 @@ namespace Photon.NeuralNetwork.Opertat.Serializer
             buffer = BitConverter.GetBytes(SectionType.GetSectionSign(SECTION_TYPE, VERSION)); // 2-bytes
             stream.Write(buffer, 0, buffer.Length);
 
-            // serialize progress count
-            buffer = BitConverter.GetBytes(progresses.Count); // 4-bytes
+            // serialize process info
+            buffer = BitConverter.GetBytes(instructor.Epoch); // 4-bytes
+            stream.Write(buffer, 0, buffer.Length);
+            // serialize process info
+            buffer = BitConverter.GetBytes(instructor.Offset); // 4-bytes
+            stream.Write(buffer, 0, buffer.Length);
+            // serialize process info
+            buffer = new byte[1] { (byte)instructor.Stage }; // 1-bytes
             stream.Write(buffer, 0, buffer.Length);
 
-            // serialize progress
-            foreach (var iprg in progresses)
-                if (iprg is Progress prg)
+            // serialize process count
+            buffer = BitConverter.GetBytes(instructor.Processes.Count); // 4-bytes
+            stream.Write(buffer, 0, buffer.Length);
+
+            // serialize process
+            foreach (var iprc in instructor.Processes)
+                if (iprc is TrainProcess prc)
                 {
-                    var state = prg.Info();
+                    var state = prc.Info();
 
                     buffer = BitConverter.GetBytes(state.record_count); // 4-bytes
                     stream.Write(buffer, 0, buffer.Length);
 
                     buffer = BitConverter.GetBytes(state.current_total_accruacy); // 8-bytes
+                    stream.Write(buffer, 0, buffer.Length);
+
+                    buffer = new byte[1] { (byte)(state.out_of_line ? 1 : 0) }; // 1-bytes
                     stream.Write(buffer, 0, buffer.Length);
 
                     buffer = BitConverter.GetBytes(state.accuracy_chain.Length); // 4-bytes
@@ -80,9 +93,22 @@ namespace Photon.NeuralNetwork.Opertat.Serializer
                         NeuralNetworkSerializer.Serialize(stream, state.best_image);
                     }
                 }
+
+            // serialize out-of-line count
+            buffer = BitConverter.GetBytes(instructor.OutOfLine.Count); // 4-bytes
+            stream.Write(buffer, 0, buffer.Length);
+
+            // serialize out-of-line
+            foreach (var bi in instructor.OutOfLine)
+            {
+                buffer = BitConverter.GetBytes(bi.accuracy); // 8-bytes
+                stream.Write(buffer, 0, buffer.Length);
+
+                NeuralNetworkSerializer.Serialize(stream, bi.image);
+            }
         }
 
-        public static IReadOnlyList<IProgress> Restore(string path)
+        public static void Restore(string path, Instructor instructor)
         {
             if (path == null)
                 throw new ArgumentNullException(nameof(path));
@@ -92,11 +118,11 @@ namespace Photon.NeuralNetwork.Opertat.Serializer
             // read file signature
             var buffer = new byte[FILE_TYPE_SIGNATURE.Length];
             stream.Read(buffer, 0, buffer.Length);
-            var file_type_diignature = Encoding.ASCII.GetString(buffer);
+            var file_type_dignature = Encoding.ASCII.GetString(buffer);
 
             // check file signature
             bool valid_sign;
-            if (file_type_diignature != FILE_TYPE_SIGNATURE_STRING)
+            if (file_type_dignature != FILE_TYPE_SIGNATURE_STRING)
             {
                 valid_sign = false;
                 stream.Seek(0, SeekOrigin.Begin);
@@ -104,13 +130,13 @@ namespace Photon.NeuralNetwork.Opertat.Serializer
             else valid_sign = true;
 
             // restore file
-            return Restore(stream, valid_sign);
+            Restore(stream, instructor, valid_sign);
         }
-        public static IReadOnlyList<IProgress> Restore(FileStream stream)
+        public static void Restore(FileStream stream, Instructor instructor)
         {
-            return Restore(stream, true);
+            Restore(stream, instructor, true);
         }
-        private static IReadOnlyList<IProgress> Restore(FileStream stream, bool valid_sign)
+        private static void Restore(FileStream stream, Instructor instructor, bool valid_sign)
         {
             if (stream == null)
                 throw new ArgumentNullException(nameof(stream), "The writer stream is not defined");
@@ -130,19 +156,91 @@ namespace Photon.NeuralNetwork.Opertat.Serializer
             {
                 case 2:
                 case 3:
-                case VERSION: return RestoreLastVersion(stream);
-                default: throw new Exception("This version of progress list is not supported");
+                case 4:
+                    RestoreLastVersion4(stream, instructor);
+                    break;
+                case VERSION:
+                    RestoreLastVersion(stream, instructor);
+                    break;
+                default: throw new Exception("This version of process list is not supported");
             };
         }
-        private static IReadOnlyList<IProgress> RestoreLastVersion(FileStream stream)
+        private static void RestoreLastVersion(FileStream stream, Instructor instructor)
         {
             var buffer = new byte[8];
 
             stream.Read(buffer, 0, 4);
-            var progresses_count = BitConverter.ToInt32(buffer, 0);
-            var progress = new List<Progress>(progresses_count);
+            instructor.Epoch = BitConverter.ToUInt32(buffer, 0);
 
-            for (var i = 0; i < progresses_count; i++)
+            stream.Read(buffer, 0, 4);
+            instructor.Offset = BitConverter.ToUInt32(buffer, 0);
+
+            stream.Read(buffer, 0, 1);
+            instructor.Stage = (TraingingStages)buffer[0];
+
+            stream.Read(buffer, 0, 4);
+            var count = BitConverter.ToInt32(buffer, 0);
+            var process = new List<TrainProcess>(count);
+
+            for (var i = 0; i < count; i++)
+            {
+                stream.Read(buffer, 0, 4);
+                var record_count = BitConverter.ToInt32(buffer, 0);
+
+                stream.Read(buffer, 0, 8);
+                var current_total_accruacy = BitConverter.ToDouble(buffer, 0);
+
+                stream.Read(buffer, 0, 1);
+                var is_out_of_line = buffer[0] != 0;
+
+                stream.Read(buffer, 0, 4);
+                var chain_count = BitConverter.ToInt32(buffer, 0);
+                var accuracy_chain = new double[chain_count];
+
+                for (var c = 0; c < chain_count; c++)
+                {
+                    stream.Read(buffer, 0, 8);
+                    accuracy_chain[c] = BitConverter.ToDouble(buffer, 0);
+                }
+
+                var current_image = NeuralNetworkSerializer.Restore(stream);
+
+                NeuralNetworkImage best_image;
+                stream.Read(buffer, 0, 1);
+                if (buffer[0] == 0) best_image = null;
+                else best_image = NeuralNetworkSerializer.Restore(stream);
+
+                process.Add(TrainProcess.RestoreInfo(
+                    new ProgressState(
+                        current_image, record_count, current_total_accruacy,
+                        accuracy_chain, best_image, is_out_of_line)));
+            }
+
+            stream.Read(buffer, 0, 4);
+            count = BitConverter.ToInt32(buffer, 0);
+            var out_of_line = new List<BrainInfo>(count);
+
+            for (var i = 0; i < count; i++)
+            {
+                stream.Read(buffer, 0, 8);
+                var accruacy = BitConverter.ToDouble(buffer, 0);
+
+                var image = NeuralNetworkSerializer.Restore(stream);
+
+                out_of_line[i] = new BrainInfo(image, accruacy);
+            }
+
+            instructor.LoadProgress(process, out_of_line);
+        }
+        private static void RestoreLastVersion4(FileStream stream, Instructor instructor)
+        {
+            var buffer = new byte[8];
+
+            stream.Read(buffer, 0, 4);
+            var processes_count = BitConverter.ToInt32(buffer, 0);
+            var process = new List<TrainProcess>(processes_count);
+
+            for (var i = 0; i < processes_count; i++)
             {
                 stream.Read(buffer, 0, 4);
                 var record_count = BitConverter.ToInt32(buffer, 0);
@@ -167,13 +265,13 @@ namespace Photon.NeuralNetwork.Opertat.Serializer
                 if (buffer[0] == 0) best_image = null;
                 else best_image = NeuralNetworkSerializer.Restore(stream);
 
-                progress.Add(Progress.RestoreInfo(
+                process.Add(TrainProcess.RestoreInfo(
                     new ProgressState(
                         current_image, record_count, current_total_accruacy,
-                        accuracy_chain, best_image)));
+                        accuracy_chain, best_image, false)));
             }
 
-            return progress;
+            instructor.LoadProgress(process, null);
         }
 
 

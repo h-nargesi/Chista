@@ -10,11 +10,11 @@ namespace Photon.NeuralNetwork.Opertat.Serializer
 
         public static ushort GetSectionSign(byte file_type, ushort version)
         {
-            return (ushort)((file_type << 12) & version);
+            return (ushort)((file_type << 12) | version);
         }
         public static (byte file_type, ushort version) GetSectionInfo(ushort file_sign)
         {
-            return ((byte)(FILE_TYPE_MASK & file_sign), (ushort)(VERSION_MASK & file_sign));
+            return ((byte)((FILE_TYPE_MASK & file_sign) >> 12), (ushort)(VERSION_MASK & file_sign));
         }
     }
 }
