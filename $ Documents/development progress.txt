@@ -1,5 +1,2 @@
-[test] file type signature
-[test] binary state neurons (BSN)
-[test] increase stack input size
-implement validation to break training (training, validation, evaluation process)
+[test] validation to break training (training, validation, evaluation process)
 implement genetic algorithm

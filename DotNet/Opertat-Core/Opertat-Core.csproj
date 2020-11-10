@@ -5,7 +5,7 @@
     <RootNamespace>Photon.NeuralNetwork.Opertat.Core</RootNamespace>
     <AssemblyName>opertat.core</AssemblyName>
     <LangVersion>8.0</LangVersion>
-    <Version>2.1.85.2</Version>
+    <Version>2.2.86</Version>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
