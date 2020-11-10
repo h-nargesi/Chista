@@ -6,7 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using MathNet.Numerics.LinearAlgebra;
 using Photon.NeuralNetwork.Opertat.Implement;
-using Photon.NeuralNetwork.Opertat.Debug.Config;
+using Photon.NeuralNetwork.Opertat.Trainer;
 
 namespace Photon.NeuralNetwork.Opertat.Debug
 {
@@ -27,7 +27,7 @@ namespace Photon.NeuralNetwork.Opertat.Debug
             base.OnInitialize();
 
             string print = null;
-            var image = Progresses[0].Brain.Image();
+            var image = Processes[0].Brain.Image();
             for (var i = 0; i < image.layers.Length; i++)
             {
                 print += Print(image.layers[i].Bias.ToArray());
@@ -37,9 +37,11 @@ namespace Photon.NeuralNetwork.Opertat.Debug
 
             Debugger.Console.WriteCommitLine(print);
 
-            Epoch = uint.MaxValue;
-            Count = 128;
+            Epoch = 0;
             Offset = 0;
+            TrainingCount = 128;
+            ValidationCount = 0;
+            EvaluationCount = 0;
         }
         protected override NeuralNetworkImage[] BrainInitializer()
         {
@@ -63,7 +65,7 @@ namespace Photon.NeuralNetwork.Opertat.Debug
 
             return new NeuralNetworkImage[] { image };
         }
-        protected override Task<Record> PrepareNextData(uint offset)
+        protected override Task<Record> PrepareNextData(uint offset, TraingingStages stage)
         {
             double[] data = new double[] {
                 random.NextDouble() * SignalRange * 2 - SignalRange,
@@ -77,11 +79,11 @@ namespace Photon.NeuralNetwork.Opertat.Debug
                 ) / 40
             };
 
-            return Task.FromResult(new Record(true, data, result));
+            return Task.FromResult(new Record(data, result));
         }
         protected override void ReflectFinished(Record record, long duration)
         {
-            if (Offset % Count == 0)
+            if (Offset == 0)
                 Debugger.Console.CommitLine();
             else
             {
@@ -89,14 +91,14 @@ namespace Photon.NeuralNetwork.Opertat.Debug
                 Debugger.Console.WriteWord(print);
             }
 
-            var accuracy = Progresses[0].CurrentAccuracy;
-            var predict = Progresses[0].LastPredict;
+            var accuracy = Processes[0].CurrentAccuracy;
+            var predict = Processes[0].LastPredict;
 
             print = $"#{Offset} = ";
             print += $"result:{Print(record.result, 6)}\t";
             print += $"output:{Print(predict.ResultSignals, 6)}\t";
             print += $"accuracy:{Print(accuracy * 100, 2)}\t";
-            print += $"error:{Print(Progresses[0].Brain.Errors(predict, record.result), null)}\r\n";
+            print += $"error:{Print(Processes[0].Brain.Errors(predict, record.result), null)}\r\n";
 
             /*var image = Brain.Image();
             for (var i = 0; i < image.layers.Length; i++)

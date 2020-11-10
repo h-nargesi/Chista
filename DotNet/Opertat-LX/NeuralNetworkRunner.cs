@@ -34,30 +34,20 @@ namespace Photon.NeuralNetwork.Opertat.Debug
             Thread.CurrentThread.CurrentCulture = ci;
             Thread.CurrentThread.CurrentUICulture = ci;
 
-            Offset = setting.Progress.CurrentOffset;
-            Epoch = setting.Progress.LearningEpoch;
-            Tries = setting.Progress.LearningTries;
-
             string path = setting.Brain.ImagesPath;
-            if (!setting.Progress.Rebuild && File.Exists(path + ".nnp"))
+            if (!setting.Brain.Rebuild && File.Exists(path + ".nnp"))
             {
                 Debugger.Console.WriteCommitLine("loading brain ... ");
 
-                var progresses = TrainProcessSerializer.Restore($"{setting.Brain.ImagesPath}.nnp");
-
-                IReadOnlyList<BrainInfo> out_of_line;
-                if (!File.Exists(path + ".out-of-line.nnbi")) out_of_line = null;
-                else out_of_line = BrainInfoSerializer.Restore($"{setting.Brain.ImagesPath}.out-of-line.nnbi");
-
-                LoadProgress(progresses, out_of_line);
+                TrainProcessSerializer.Restore($"{setting.Brain.ImagesPath}.nnp", this);
             }
             else
             {
                 Debugger.Console.WriteCommitLine("new brain ... ");
 
-                if (setting.Progress.Rebuild)
+                if (setting.Brain.Rebuild)
                 {
-                    setting.Progress.Rebuild = false;
+                    setting.Brain.Rebuild = false;
                     Offset = 0;
                 }
 
@@ -84,16 +74,10 @@ namespace Photon.NeuralNetwork.Opertat.Debug
         }
         protected override void OnStopped()
         {
-            setting.Progress.CurrentOffset = Offset;
-
-            if (Progresses.Count > 0)
-            {
-                Debugger.Console.WriteCommitLine("storing brain's image ... ");
-                if (string.IsNullOrWhiteSpace(setting.Brain.ImagesPath))
-                    setting.Brain.ImagesPath = Name;
-                TrainProcessSerializer.Serialize($"{setting.Brain.ImagesPath}.nnp", Progresses);
-                BrainInfoSerializer.Serialize($"{setting.Brain.ImagesPath}.out-of-line.nnbi", OutOfLine);
-            }
+            Debugger.Console.WriteCommitLine("storing brain's image ... ");
+            if (string.IsNullOrWhiteSpace(setting.Brain.ImagesPath))
+                setting.Brain.ImagesPath = Name;
+            TrainProcessSerializer.Serialize($"{setting.Brain.ImagesPath}.nnp", this);
 
             setting.Save();
 
