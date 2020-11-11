@@ -253,23 +253,23 @@ namespace Photon.NeuralNetwork.Opertat.Trainer
             // millisecond
             duration /= 10000;
             if (duration == 0) return result.ToString();
-            result.Insert(0, "ms").Insert(0, duration % 1000);
+            result.Insert(0, "ms,").Insert(0, duration % 1000);
             // second
             duration /= 1000;
             if (duration == 0) return result.ToString();
-            result.Insert(0, "s").Insert(0, duration % 60);
+            result.Insert(0, "s,").Insert(0, duration % 60);
             // miniute
             duration /= 60;
             if (duration == 0) return result.ToString();
-            result.Insert(0, "m").Insert(0, duration % 60);
+            result.Insert(0, "m,").Insert(0, duration % 60);
             // hour
             duration /= 60;
             if (duration == 0) return result.ToString();
-            result.Insert(0, "h").Insert(0, duration % 24);
+            result.Insert(0, "h,").Insert(0, duration % 24);
             // days
             duration /= 24;
             if (duration == 0) return result.ToString();
-            result.Insert(0, "d").Insert(0, duration);
+            result.Insert(0, "d,").Insert(0, duration);
             // return
             return result.ToString();
         }
