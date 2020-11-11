@@ -140,6 +140,7 @@ namespace Photon.NeuralNetwork.Opertat
             // double lr = LearningFactor;
             try
             {
+                // TODO: question => does it can be out of locker block?
                 // calculate total error of network result
                 flash.TotalError = delta.PointwiseAbs().Sum();
                 // check if is not any error then do not train the network
@@ -281,6 +282,22 @@ namespace Photon.NeuralNetwork.Opertat
             }
         }
 
+        public void FillTotalError(NeuralNetworkFlash flash, double[] values)
+        {
+            if (flash == null)
+                throw new ArgumentNullException(nameof(flash));
+            if (values == null)
+                throw new ArgumentNullException(nameof(values));
+
+            // pure data
+            var delta = Vector<double>.Build.DenseOfArray(values);
+            // standardized signals
+            if (out_cvrt != null) delta = out_cvrt.Standardize(delta);
+            // calculate error
+            delta = error_fnc.ErrorCalculation(flash.InputSignals[^1], delta);
+            // calculate total error of network result
+            flash.TotalError = delta.PointwiseAbs().Sum();
+        }
         public double[] Errors(NeuralNetworkFlash flash, double[] values)
         {
             if (flash == null)

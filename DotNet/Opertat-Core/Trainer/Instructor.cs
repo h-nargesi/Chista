@@ -165,6 +165,8 @@ namespace Photon.NeuralNetwork.Opertat.Trainer
                                             if (process.OutOfLine) return;
                                             // test this neural network with validation data
                                             var flash = process.Brain.Test(record.data);
+                                            // calculate total error
+                                            process.Brain.FillTotalError(flash, record.result);
                                             // change progress state
                                             process.ChangeSatate(flash);
                                         });
@@ -183,6 +185,8 @@ namespace Photon.NeuralNetwork.Opertat.Trainer
                                             if (!process.OutOfLine) return;
                                             // test this neural network with evaluation data
                                             var flash = process.Brain.Test(record.data);
+                                            // calculate total error
+                                            process.Brain.FillTotalError(flash, record.result);
                                             // change progress state
                                             process.ChangeSatate(flash);
                                         });
