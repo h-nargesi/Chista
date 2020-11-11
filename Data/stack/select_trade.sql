@@ -69,7 +69,7 @@ where		InstrumentID = @ID and DateTimeEn between EndDateEn and StartDateEn
 				as period_start,
 			max(year_diff) over (
 				order by DateTimeEn desc rows between 59/*SIGNAL_LAST_YEARS-1*/ preceding and current row)
-				as year_diff,
+				- 1 as year_sec_count,
 			ChangePercent
     from (
       select 	case when DateTimeJlNext < Annual and Annual <= DateTimeJl then Ranking else null end as period_start,
@@ -95,7 +95,7 @@ where		InstrumentID = @ID and DateTimeEn between EndDateEn and StartDateEn
 				when Ranking <= 20/*RESULT_COUNT*/
 				then 0
 				---------------------------------------------
-				when year_diff > 1 then 10 + year_diff - 1
+				when year_sec_count > 0 then 10 + year_sec_count
 				---------------------------------------------------------------
 				when Ranking <= 20/*RESULT_COUNT*2*/ + 183/*SIGNAL_STEP_COUNT*/
 				then 1
@@ -115,8 +115,8 @@ where		InstrumentID = @ID and DateTimeEn between EndDateEn and StartDateEn
 				when Ranking <= 20/*RESULT_COUNT*/
 				then Ranking
 				------------------------------------------------------------
-				when year_diff > 1
-				then floor((Ranking - period_start + (year_diff - 1)) / (year_diff - 1))
+				when year_sec_count > 0
+				then floor((Ranking - period_start + year_sec_count) / year_sec_count)
 				---------------------------------------------------------------
 				when Ranking <= 20/*RESULT_COUNT*2*/ + 183/*SIGNAL_STEP_COUNT*/
 				then (Ranking - 21) + 1
