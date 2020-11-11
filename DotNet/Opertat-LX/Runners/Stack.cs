@@ -11,6 +11,7 @@ using System.Globalization;
 using System.Threading;
 using Photon.NeuralNetwork.Opertat.Implement;
 using Photon.NeuralNetwork.Opertat.Trainer;
+using Photon.NeuralNetwork.Opertat.Debug.Tools;
 
 namespace Photon.NeuralNetwork.Opertat.Debug
 {
@@ -19,14 +20,13 @@ namespace Photon.NeuralNetwork.Opertat.Debug
         public const string NAME = "stk";
         public override string Name => NAME;
 
-        private long offset_interval, last_printing_time = DateTime.Now.Ticks;
-        private int record_count;
         private int company_step = 0, last_instrument = 0;
         private List<Step> cumulative_frequency_training,
             cumulative_frequency_validation, cumulative_frequency_evaluation;
         private SqlCommand sqlite;
         private string print = "";
         private readonly object sqlite_lock = new object();
+        private TimeReporter time_reporter;
 
         private class Step
         {
@@ -86,7 +86,7 @@ namespace Photon.NeuralNetwork.Opertat.Debug
                     if ((uint)(int)reader[3] > 0)
                     {
                         cumulative_frequency_evaluation.Add(new Step(EvaluationCount, (int)reader[0], false));
-                        ValidationCount += (uint)(int)reader[3];
+                        EvaluationCount += (uint)(int)reader[3];
                     }
                 }
 
@@ -96,6 +96,8 @@ namespace Photon.NeuralNetwork.Opertat.Debug
                 sqlite.CommandText = "GetTrade";
                 sqlite.CommandType = CommandType.StoredProcedure;
             }
+
+            time_reporter = new TimeReporter();
         }
         protected override NeuralNetworkImage[] BrainInitializer()
         {
@@ -179,7 +181,7 @@ namespace Photon.NeuralNetwork.Opertat.Debug
             }
 
             int start = 0, top = cumulative_frequency.Count;
-			Step left, right;
+            Step left, right;
             while (true)
             {
                 left = cumulative_frequency[company_step];
@@ -201,12 +203,14 @@ namespace Photon.NeuralNetwork.Opertat.Debug
         }
         protected override void ReflectFinished(Record record, long duration)
         {
+            // for clear the last report
             string clearing;
             if (Stage == TraingingStages.Training && last_instrument != (int)record.extra || Offset == 0)
                 clearing = null;
             else clearing = Regex.Replace(print, "[^ \t\r\n]", " ");
             last_instrument = (int)record.extra;
 
+            // prepare report info
             double accuracy = 0, result = 0;
             foreach (var prc in Processes)
             {
@@ -215,28 +219,51 @@ namespace Photon.NeuralNetwork.Opertat.Debug
             }
             result /= Processes.Count;
 
-            offset_interval += DateTime.Now.Ticks - last_printing_time;
-            record_count++;
+            var offset_interval = time_reporter.GetNextAvg();
 
-            uint count = Stage switch
+            uint count;
+            long remain_count;
+            switch (Stage)
             {
-                TraingingStages.Training => TrainingCount,
-                TraingingStages.Validation => ValidationCount,
-                TraingingStages.Evaluation => EvaluationCount,
-                _ => throw new Exception("Invalid stage type"),
-            };
+                case TraingingStages.Training:
+                    count = TrainingCount;
+                    remain_count = TrainingCount - Offset;
+                    remain_count += ValidationCount;
+                    remain_count += EvaluationCount;
+                    break;
+                case TraingingStages.Validation:
+                    count = ValidationCount;
+                    remain_count = ValidationCount - Offset;
+                    remain_count += EvaluationCount;
+                    break;
+                case TraingingStages.Evaluation:
+                    count = EvaluationCount;
+                    remain_count = EvaluationCount - Offset;
+                    break;
+                default: throw new Exception("Invalid stage type");
+            }
 
-            print = $"#{Epoch},{Stage.ToString().ToLower()},{Offset}:\r\n\t" +
-                $"model={setting.Brain.ImagesCount} brain(s)\r\n\t" +
-                $"instm={record.extra}\t" +
+            // prepare report string
+            print = $"#{Epoch},{Stage.ToString().ToLower()},{Print(Offset * 100D / count, 3):R}%:\r\n\t" +
+                $"model={Processes.Count} net(s)\t" +
                 $"accuracy,best={Print(accuracy * 100, 4):R}\r\n\t" +
+                $"instm={record.extra}\t" +
                 $"output={Print(record.result[0], 3):R}\t" +
                 $"predict,avg={Print(result, 3):R}\r\n\t" +
                 $"data loading={GetDurationString(record.duration.Value)}\t" +
                 $"prediction={GetDurationString(duration)}\r\n" +
-                $":\tleft-time={GetDurationString(offset_interval / record_count * (count - Offset))}";
+                $":\tleft-time={GetDurationString(offset_interval * remain_count)}";
 
-            last_printing_time = DateTime.Now.Ticks;
+            if (OutOfLine.Count > 0)
+            {
+                accuracy = 0;
+                foreach (var prc in OutOfLine)
+                    accuracy = Math.Max(prc.accuracy, accuracy);
+
+                print += "\r\n\t" +
+                    $"out={OutOfLine.Count} net(s)\t" +
+                    $"accuracy,best={Print(accuracy * 100, 4):R}";
+            }
 
             if (clearing == null) Debugger.Console.CommitLine();
             else Debugger.Console.WriteWord(clearing);
