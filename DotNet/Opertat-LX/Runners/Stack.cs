@@ -40,6 +40,11 @@ namespace Photon.NeuralNetwork.Opertat.Debug
                 this.instrument = instrument;
                 this.is_training = is_training;
             }
+
+            public override string ToString()
+            {
+                return $"{instrument} from {start_point} t:{is_training}";
+            }
         }
 
         protected override void OnInitialize()
@@ -173,7 +178,8 @@ namespace Photon.NeuralNetwork.Opertat.Debug
                 return (inst.start_point, inst.instrument);
             }
 
-            Step left, right;
+            int start = 0, top = cumulative_frequency.Count;
+			Step left, right;
             while (true)
             {
                 left = cumulative_frequency[company_step];
@@ -188,9 +194,9 @@ namespace Photon.NeuralNetwork.Opertat.Debug
                     company_step++;
                     return (offset - right.start_point, right.instrument);
                 }
-                else if (offset > right.start_point)
-                    company_step = (cumulative_frequency.Count - (company_step + 1)) / 2;
-                else if (left.start_point > offset) company_step /= 2;
+                else if (offset > right.start_point) start = company_step + 1;
+                else if (left.start_point > offset) top = company_step;
+                company_step = (top + start) / 2;
             }
         }
         protected override void ReflectFinished(Record record, long duration)

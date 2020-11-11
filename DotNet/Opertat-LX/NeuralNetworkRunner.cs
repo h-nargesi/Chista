@@ -34,12 +34,12 @@ namespace Photon.NeuralNetwork.Opertat.Debug
             Thread.CurrentThread.CurrentCulture = ci;
             Thread.CurrentThread.CurrentUICulture = ci;
 
-            string path = setting.Brain.ImagesPath;
-            if (!setting.Brain.Rebuild && File.Exists(path + ".nnp"))
+            if (string.IsNullOrWhiteSpace(setting.Brain.ImagesPath))
+                setting.Brain.ImagesPath = $"{Name}.nnp";
+            if (!setting.Brain.Rebuild && File.Exists(setting.Brain.ImagesPath))
             {
                 Debugger.Console.WriteCommitLine("loading brain ... ");
-
-                TrainProcessSerializer.Restore($"{setting.Brain.ImagesPath}.nnp", this);
+                TrainProcessSerializer.Restore(setting.Brain.ImagesPath, this);
             }
             else
             {
@@ -76,8 +76,8 @@ namespace Photon.NeuralNetwork.Opertat.Debug
         {
             Debugger.Console.WriteCommitLine("storing brain's image ... ");
             if (string.IsNullOrWhiteSpace(setting.Brain.ImagesPath))
-                setting.Brain.ImagesPath = Name;
-            TrainProcessSerializer.Serialize($"{setting.Brain.ImagesPath}.nnp", this);
+                setting.Brain.ImagesPath = $"{Name}.nnp";
+            TrainProcessSerializer.Serialize(setting.Brain.ImagesPath, this);
 
             setting.Save();
 

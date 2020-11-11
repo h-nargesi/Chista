@@ -1,9 +1,9 @@
 use RahavardNovin3;
 go
 
-declare @ID int = 13;
+declare @ID int = 20038;
 declare @Type char(1) = 'T';
-declare @Offset bigint = 0;
+declare @Offset bigint = 771;
 
 --create or alter procedure GetTrade  @ID int, @Type char(1), @Offset bigint as
 
@@ -95,7 +95,7 @@ where		InstrumentID = @ID and DateTimeEn between EndDateEn and StartDateEn
 				when Ranking <= 20/*RESULT_COUNT*/
 				then 0
 				---------------------------------------------
-				when period_start > 1 then 10 + year_diff - 1
+				when year_diff > 1 then 10 + year_diff - 1
 				---------------------------------------------------------------
 				when Ranking <= 20/*RESULT_COUNT*2*/ + 183/*SIGNAL_STEP_COUNT*/
 				then 1
@@ -115,8 +115,8 @@ where		InstrumentID = @ID and DateTimeEn between EndDateEn and StartDateEn
 				when Ranking <= 20/*RESULT_COUNT*/
 				then Ranking
 				------------------------------------------------------------
-				when period_start > 1
-				then floor((Ranking - period_start + year_diff) / (year_diff - 1))
+				when year_diff > 1
+				then floor((Ranking - period_start + (year_diff - 1)) / (year_diff - 1))
 				---------------------------------------------------------------
 				when Ranking <= 20/*RESULT_COUNT*2*/ + 183/*SIGNAL_STEP_COUNT*/
 				then (Ranking - 21) + 1
@@ -152,5 +152,5 @@ where		InstrumentID = @ID and DateTimeEn between EndDateEn and StartDateEn
 )
 
 --select * from pointer
-select * from section order by DateTimeEn desc
+select * from label order by DateTimeEn desc 
 --select ChangePercent from section order by Section, Ranking
