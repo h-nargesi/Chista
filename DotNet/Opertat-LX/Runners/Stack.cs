@@ -242,8 +242,9 @@ namespace Photon.NeuralNetwork.Opertat.Debug
             }
 
             // prepare report string
-            print = @$"#{Epoch},{Stage.ToString().ToLower()},{Print(Offset * 100D / count, 3):R}%:
-	model={Processes.Count} net(s)	accuracy,best={Print(accuracy * 100, 4):R}
+            print =
+@$"#{Epoch},{Stage.ToString().ToLower()},{PrintUnsign(Offset * 100D / count, 3):R}%:
+	model={Processes.Count} net(s)	accuracy,best={PrintUnsign(accuracy * 100, 4):R}
 	---------------------------------------------
 	instm={record.extra}	output={Print(record.result[0], 3):R}	predict,avg={Print(result, 3):R}
 	data loading={GetDurationString(record.duration.Value)}	prediction={GetDurationString(duration)}
@@ -258,7 +259,7 @@ namespace Photon.NeuralNetwork.Opertat.Debug
 
                 print += @$"
 	--------------------------------------
-	out={OutOfLine.Count} net(s)	accuracy,best={Print(accuracy * 100, 4):R}";
+	out={OutOfLine.Count} net(s)	accuracy,best={PrintUnsign(accuracy * 100, 4):R}";
             }
 
             if (clearing == null) Debugger.Console.CommitLine();

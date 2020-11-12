@@ -144,6 +144,12 @@ namespace Photon.NeuralNetwork.Opertat.Debug
                 val = Math.Round(val, digit.Value);
             return (val >= 0 ? "+" : "") + val.ToString("R");
         }
+        protected static string PrintUnsign(double val, int? digit)
+        {
+            if (digit.HasValue)
+                val = Math.Round(val, digit.Value);
+            return val.ToString("R");
+        }
 
     }
 }
