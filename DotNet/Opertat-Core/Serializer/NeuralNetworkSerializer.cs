@@ -68,23 +68,14 @@ namespace Photon.NeuralNetwork.Opertat.Serializer
             stream.Read(buffer, 0, buffer.Length);
             var file_type_diignature = Encoding.ASCII.GetString(buffer);
 
-            // check file signature
-            bool valid_sign;
-            if (file_type_diignature != FILE_TYPE_SIGNATURE_STRING)
-            {
-                valid_sign = false;
-                stream.Seek(0, SeekOrigin.Begin);
-            }
-            else valid_sign = true;
-
             // restore file
-            return Restore(stream, valid_sign);
+            return Restore(stream, file_type_diignature);
         }
         public static NeuralNetworkImage Restore(FileStream stream)
         {
-            return Restore(stream, true);
+            return Restore(stream, null);
         }
-        private static NeuralNetworkImage Restore(FileStream stream, bool valid_sign)
+        private static NeuralNetworkImage Restore(FileStream stream, string sign)
         {
             if (stream == null)
                 throw new ArgumentNullException(nameof(stream));
@@ -97,16 +88,20 @@ namespace Photon.NeuralNetwork.Opertat.Serializer
             if (section_type != SECTION_TYPE && version > 3)
                 throw new Exception("Invalid section type");
 
-            if (!valid_sign && version > 4)
-                throw new Exception("Invalid file signature");
-
             switch (version)
             {
                 case 1: throw new Exception("The 1st version of nni is not supported any more.");
-                case 2: return RestoreVer2(stream);
+                case 2:
+                    if (sign != null) stream.Seek(0, SeekOrigin.Begin); 
+                    return RestoreVer2(stream);
                 case 3:
                 case 4:
-                case VERSION: return RestoreLastVersion(stream);
+                    if (sign != null) stream.Seek(0, SeekOrigin.Begin); 
+                    return RestoreLastVersion(stream);
+                case VERSION:
+                    if (sign != null && sign != FILE_TYPE_SIGNATURE_STRING)
+                        throw new Exception("Invalid file signature"); 
+                    return RestoreLastVersion(stream);
                 default: throw new Exception("This version of nni is not supported.");
             };
         }
