@@ -40,6 +40,22 @@ namespace Photon.NeuralNetwork.Opertat.Debug
             {
                 Debugger.Console.WriteCommitLine("loading brain ... ");
                 TrainProcessSerializer.Restore(setting.Brain.ImagesPath, this);
+
+                // reset stage
+                var stage = setting.Process.Stage;
+                if (stage != null)
+                {
+                    Stage = stage.Value;
+                    setting.Process.Stage = null;
+                }
+
+                // reset offsets
+                var offset = setting.Process.Offset;
+                if (offset != null)
+                {
+                    Offset = offset.Value;
+                    setting.Process.Offset = null;
+                }
             }
             else
             {

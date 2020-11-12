@@ -52,5 +52,16 @@ namespace Photon.NeuralNetwork.Opertat.Debug.Config
                 return brain_instance;
             }
         }
+
+        private ProcessConfigHandler process;
+        public ProcessConfigHandler Process
+        {
+            get
+            {
+                if (process == null)
+                    process = new ProcessConfigHandler(GetConfig(ProcessConfigHandler.key, null));
+                return process;
+            }
+        }
     }
 }

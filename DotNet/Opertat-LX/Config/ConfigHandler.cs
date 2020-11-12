@@ -48,7 +48,7 @@ namespace Photon.NeuralNetwork.Opertat.Debug.Config
             if (!setting.ContainsKey(name))
             {
                 value = default_value;
-                setting.Add(name, JToken.FromObject(value));
+                setting.Add(name, value != null ? JToken.FromObject(value) : null);
             }
             else value = setting.Value<T>(name);
 
@@ -85,8 +85,8 @@ namespace Photon.NeuralNetwork.Opertat.Debug.Config
         public void SetSetting(string name, object value)
         {
             if (!setting.ContainsKey(name))
-                setting.Add(name, JToken.FromObject(value));
-            else setting[name].Replace(JToken.FromObject(value));
+                setting.Add(name, value != null ? JToken.FromObject(value) : null);
+            else setting[name].Replace(value != null ? JToken.FromObject(value) : null);
         }
 
     }
