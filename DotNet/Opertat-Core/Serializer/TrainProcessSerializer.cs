@@ -121,14 +121,13 @@ namespace Photon.NeuralNetwork.Opertat.Serializer
             stream.Read(buffer, 0, buffer.Length);
             var file_type_dignature = Encoding.ASCII.GetString(buffer);
 
+            if (file_type_dignature != FILE_TYPE_SIGNATURE_STRING)
+                throw new Exception("Invalid nnp file signature");
+
             // restore file
-            Restore(stream, instructor, file_type_dignature);
+            Restore(stream, instructor);
         }
         public static void Restore(FileStream stream, Instructor instructor)
-        {
-            Restore(stream, instructor, null);
-        }
-        private static void Restore(FileStream stream, Instructor instructor, string sign)
         {
             if (stream == null)
                 throw new ArgumentNullException(nameof(stream), "The writer stream is not defined");
@@ -139,27 +138,17 @@ namespace Photon.NeuralNetwork.Opertat.Serializer
             var (section_type, version) = SectionType.GetSectionInfo(BitConverter.ToUInt16(buffer, 0));
 
             if (section_type != SECTION_TYPE && version > 2)
-                throw new Exception("Invalid section type");
+                throw new Exception("Invalid nnp section type");
+
+            if (version <= 5)
+                throw new Exception("This version of nnp is not supported any more.");
 
             switch (version)
             {
-                case 2:
-                case 3:
-                case 4:
-                    if (sign != null) stream.Seek(0, SeekOrigin.Begin);
-                    RestoreLastVersion4(stream, instructor);
-                    break;
-                case 5:
-                    if (sign != null && sign != "Opertat Training Process")
-                        throw new Exception("Invalid file signature");
-                    RestoreLastVersion5(stream, instructor);
-                    break;
                 case VERSION:
-                    if (sign != null && sign != FILE_TYPE_SIGNATURE_STRING)
-                        throw new Exception("Invalid file signature");
                     RestoreLastVersion(stream, instructor);
                     break;
-                default: throw new Exception("This version of process list is not supported");
+                default: throw new Exception("This version of nnp list is not supported");
             };
         }
         private static void RestoreLastVersion(FileStream stream, Instructor instructor)
@@ -228,114 +217,6 @@ namespace Photon.NeuralNetwork.Opertat.Serializer
             }
 
             instructor.LoadProgress(process, out_of_line);
-        }
-        private static void RestoreLastVersion5(FileStream stream, Instructor instructor)
-        {
-            var buffer = new byte[8];
-
-            stream.Read(buffer, 0, 4);
-            instructor.Epoch = BitConverter.ToUInt32(buffer, 0);
-
-            stream.Read(buffer, 0, 4);
-            instructor.Offset = BitConverter.ToUInt32(buffer, 0);
-
-            stream.Read(buffer, 0, 1);
-            instructor.Stage = (TraingingStages)(buffer[0] + 1);
-
-            stream.Read(buffer, 0, 4);
-            var count = BitConverter.ToInt32(buffer, 0);
-            var process = new List<TrainProcess>(count);
-
-            for (var i = 0; i < count; i++)
-            {
-                stream.Read(buffer, 0, 4);
-                var record_count = BitConverter.ToInt32(buffer, 0);
-
-                stream.Read(buffer, 0, 8);
-                var current_total_accruacy = BitConverter.ToDouble(buffer, 0);
-
-                stream.Read(buffer, 0, 1);
-                var is_out_of_line = buffer[0] != 0;
-
-                stream.Read(buffer, 0, 4);
-                var chain_count = BitConverter.ToInt32(buffer, 0);
-                var accuracy_chain = new double[chain_count];
-
-                for (var c = 0; c < chain_count; c++)
-                {
-                    stream.Read(buffer, 0, 8);
-                    accuracy_chain[c] = BitConverter.ToDouble(buffer, 0);
-                }
-
-                var current_image = NeuralNetworkSerializer.Restore(stream);
-
-                NeuralNetworkImage best_image;
-                stream.Read(buffer, 0, 1);
-                if (buffer[0] == 0) best_image = null;
-                else best_image = NeuralNetworkSerializer.Restore(stream);
-
-                process.Add(TrainProcess.RestoreInfo(
-                    new ProgressState(
-                        current_image, record_count, current_total_accruacy,
-                        accuracy_chain, best_image, is_out_of_line)));
-            }
-
-            stream.Read(buffer, 0, 4);
-            count = BitConverter.ToInt32(buffer, 0);
-            var out_of_line = new List<BrainInfo>(count);
-
-            for (var i = 0; i < count; i++)
-            {
-                stream.Read(buffer, 0, 8);
-                var accruacy = BitConverter.ToDouble(buffer, 0);
-
-                var image = NeuralNetworkSerializer.Restore(stream);
-
-                out_of_line[i] = new BrainInfo(image, accruacy);
-            }
-
-            instructor.LoadProgress(process, out_of_line);
-        }
-        private static void RestoreLastVersion4(FileStream stream, Instructor instructor)
-        {
-            var buffer = new byte[8];
-
-            stream.Read(buffer, 0, 4);
-            var processes_count = BitConverter.ToInt32(buffer, 0);
-            var process = new List<TrainProcess>(processes_count);
-
-            for (var i = 0; i < processes_count; i++)
-            {
-                stream.Read(buffer, 0, 4);
-                var record_count = BitConverter.ToInt32(buffer, 0);
-
-                stream.Read(buffer, 0, 8);
-                var current_total_accruacy = BitConverter.ToDouble(buffer, 0);
-
-                stream.Read(buffer, 0, 4);
-                var chain_count = BitConverter.ToInt32(buffer, 0);
-                var accuracy_chain = new double[chain_count];
-
-                for (var c = 0; c < chain_count; c++)
-                {
-                    stream.Read(buffer, 0, 8);
-                    accuracy_chain[c] = BitConverter.ToDouble(buffer, 0);
-                }
-
-                var current_image = NeuralNetworkSerializer.Restore(stream);
-
-                NeuralNetworkImage best_image;
-                stream.Read(buffer, 0, 1);
-                if (buffer[0] == 0) best_image = null;
-                else best_image = NeuralNetworkSerializer.Restore(stream);
-
-                process.Add(TrainProcess.RestoreInfo(
-                    new ProgressState(
-                        current_image, record_count, current_total_accruacy,
-                        accuracy_chain, best_image, false)));
-            }
-
-            instructor.LoadProgress(process, null);
         }
 
 

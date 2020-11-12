@@ -68,14 +68,13 @@ namespace Photon.NeuralNetwork.Opertat.Serializer
             stream.Read(buffer, 0, buffer.Length);
             var file_type_diignature = Encoding.ASCII.GetString(buffer);
 
+            if (file_type_diignature != FILE_TYPE_SIGNATURE_STRING)
+                throw new Exception("Invalid nni file signature");
+
             // restore file
-            return Restore(stream, file_type_diignature);
+            return Restore(stream);
         }
         public static NeuralNetworkImage Restore(FileStream stream)
-        {
-            return Restore(stream, null);
-        }
-        private static NeuralNetworkImage Restore(FileStream stream, string sign)
         {
             if (stream == null)
                 throw new ArgumentNullException(nameof(stream));
@@ -86,21 +85,14 @@ namespace Photon.NeuralNetwork.Opertat.Serializer
             var (section_type, version) = SectionType.GetSectionInfo(BitConverter.ToUInt16(buffer, 0));
 
             if (section_type != SECTION_TYPE && version > 3)
-                throw new Exception("Invalid section type");
+                throw new Exception("Invalid nni section type");
+
+            if(version <= 4)
+                throw new Exception("This version of nni is not supported any more.");
 
             switch (version)
             {
-                case 1: throw new Exception("The 1st version of nni is not supported any more.");
-                case 2:
-                    if (sign != null) stream.Seek(0, SeekOrigin.Begin); 
-                    return RestoreVer2(stream);
-                case 3:
-                case 4:
-                    if (sign != null) stream.Seek(0, SeekOrigin.Begin); 
-                    return RestoreLastVersion(stream);
                 case VERSION:
-                    if (sign != null && sign != FILE_TYPE_SIGNATURE_STRING)
-                        throw new Exception("Invalid file signature"); 
                     return RestoreLastVersion(stream);
                 default: throw new Exception("This version of nni is not supported.");
             };
