@@ -35,14 +35,15 @@ namespace Photon.NeuralNetwork.Opertat.Trainer
             CurrentAccuracy = total_accuracy / record_count;
             LastPredict = predict;
         }
-        public void FinishCurrentState(bool is_training)
+        public bool FinishCurrentState(bool is_training)
         {
             record_count = 0;
             total_accuracy = 0;
             CurrentAccuracy = 0;
 
             if (!is_training)
-                OutOfLine = history.AddProgress(this);
+                return OutOfLine = history.AddProgress(this);
+            return false;
         }
 
         public NeuralNetworkImage BestBrainImage
@@ -66,10 +67,12 @@ namespace Photon.NeuralNetwork.Opertat.Trainer
 
             var progress = new TrainProcess(
                 new Brain(state.current_image),
-                History.Restore(state.accuracy_chain, state.best_image));
-            progress.record_count = state.record_count;
-            progress.total_accuracy = state.current_total_accruacy;
-            progress.OutOfLine = state.out_of_line;
+                History.Restore(state.accuracy_chain, state.best_image))
+            {
+                record_count = state.record_count,
+                total_accuracy = state.current_total_accruacy,
+                OutOfLine = state.out_of_line
+            };
 
             return progress;
         }

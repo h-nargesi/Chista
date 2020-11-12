@@ -13,8 +13,8 @@ namespace Photon.NeuralNetwork.Opertat.Trainer
         public uint TrainingCount { get; set; }
         public uint ValidationCount { get; set; }
         public uint EvaluationCount { get; set; }
+        public TraingingStages Stage { get; set; } = TraingingStages.Training;
         public uint Offset { get; set; }
-        public TraingingStages Stage { get; set; }
         public uint Epoch { get; set; }
         private (uint progress, TraingingStages stage) GetNextRound()
         {
@@ -126,9 +126,10 @@ namespace Photon.NeuralNetwork.Opertat.Trainer
                         record_geter.Wait();
                         var record = record_geter.Result;
 
+                        // next record'offset and stage
+                        var (next_offset, next_stage) = GetNextRound();
                         // fetch next record
-                        var (offset, stage) = GetNextRound();
-                        record_geter = PrepareNextData(offset, stage);
+                        record_geter = PrepareNextData(next_offset, next_stage);
 
                         if (record != null && record.data != null && record.result != null)
                         {
@@ -150,13 +151,6 @@ namespace Photon.NeuralNetwork.Opertat.Trainer
                                             // change progress state
                                             process.ChangeSatate(flash);
                                         });
-
-                                        // if next round is first round of stage
-                                        // if this round is end round of stage
-                                        if (offset == 0)
-                                            foreach (var progress in processes)
-                                                progress.FinishCurrentState(true);
-
                                         break;
                                     case TraingingStages.Validation:
                                         Parallel.ForEach(processes, (process, state, index) =>
@@ -170,13 +164,6 @@ namespace Photon.NeuralNetwork.Opertat.Trainer
                                             // change progress state
                                             process.ChangeSatate(flash);
                                         });
-
-                                        // if next round is first round of stage
-                                        // if this round is end round of stage
-                                        if (offset == 0)
-                                            foreach (var progress in processes)
-                                                progress.FinishCurrentState(false);
-
                                         break;
                                     case TraingingStages.Evaluation:
                                         Parallel.ForEach(processes, (process, state, index) =>
@@ -190,10 +177,44 @@ namespace Photon.NeuralNetwork.Opertat.Trainer
                                             // change progress state
                                             process.ChangeSatate(flash);
                                         });
+                                        break;
+                                }
 
-                                        // if next round is first round of stage
-                                        // if this round is end round of stage
-                                        if (offset == 0)
+                            if (Canceling) break;
+                            // call event
+                            ReflectFinished(record, DateTime.Now.Ticks - start_time);
+
+                            if (next_offset == 0)
+                                lock (processes)
+                                    switch (Stage)
+                                    {
+                                        case TraingingStages.Training:
+                                            // if next round is first round of stage
+                                            // if this round is end round of stage
+                                            foreach (var progress in processes)
+                                                progress.FinishCurrentState(true);
+                                            break;
+                                        case TraingingStages.Validation:
+                                            // if next round is first round of stage
+                                            // if this round is end round of stage
+                                            var we_have_out_of_line = false;
+                                            foreach (var progress in processes)
+                                                we_have_out_of_line |= progress.FinishCurrentState(false);
+                                            if (!we_have_out_of_line)
+                                            {
+                                                // go to next epoch
+                                                next_stage = TraingingStages.Training;
+                                                // fetch next record
+                                                record_geter = PrepareNextData(next_offset, next_stage);
+                                            }
+                                            break;
+                                        case TraingingStages.Evaluation:
+                                            // if next round is first round of stage
+                                            // if this round is end round of stage
+                                            foreach (var progress in processes)
+                                                progress.FinishCurrentState(false);
+                                            // if next round is first round of stage
+                                            // if this round is end round of stage
                                             for (int p = 0; p < processes.Count;)
                                                 if (!processes[p].OutOfLine) p++;
                                                 else
@@ -203,20 +224,15 @@ namespace Photon.NeuralNetwork.Opertat.Trainer
                                                         processes[p].BestBrainAccuracy));
                                                     processes.RemoveAt(p);
                                                 }
-
-                                        break;
-                                }
-
-                            if (Canceling) break;
-                            // call event
-                            ReflectFinished(record, DateTime.Now.Ticks - start_time);
+                                            break;
+                                    }
                         }
 
                         // next offset
-                        if (offset == 0 && stage == TraingingStages.Training)
+                        if (next_offset == 0 && next_stage == TraingingStages.Training)
                             Epoch++;
-                        Offset = offset;
-                        Stage = stage;
+                        Offset = next_offset;
+                        Stage = next_stage;
                     }
                 }
                 catch (Exception ex) { OnError(ex); }

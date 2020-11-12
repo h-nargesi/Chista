@@ -6,6 +6,6 @@ namespace Photon.NeuralNetwork.Opertat.Trainer
 {
     public enum TraingingStages : byte
     {
-        Training, Validation, Evaluation
+        Training = 1, Validation, Evaluation
     }
 }
