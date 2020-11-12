@@ -110,8 +110,6 @@ namespace Photon.NeuralNetwork.Opertat.Debug
 
             var images = new NeuralNetworkImage[setting.Brain.ImagesCount];
 
-
-
             var conduction = setting.Brain.Layers.Conduction == "soft-relu" ?
                 (IConduction)new SoftReLU() : new ReLU();
             var output = setting.Brain.Layers.OutputConduction == "straight" ?
@@ -244,15 +242,13 @@ namespace Photon.NeuralNetwork.Opertat.Debug
             }
 
             // prepare report string
-            print = $"#{Epoch},{Stage.ToString().ToLower()},{Print(Offset * 100D / count, 3):R}%:\r\n\t" +
-                $"model={Processes.Count} net(s)\t" +
-                $"accuracy,best={Print(accuracy * 100, 4):R}\r\n\t" +
-                $"instm={record.extra}\t" +
-                $"output={Print(record.result[0], 3):R}\t" +
-                $"predict,avg={Print(result, 3):R}\r\n\t" +
-                $"data loading={GetDurationString(record.duration.Value)}\t" +
-                $"prediction={GetDurationString(duration)}\r\n" +
-                $":\tleft-time={GetDurationString(offset_interval * remain_count)}";
+            print = @$"#{Epoch},{Stage.ToString().ToLower()},{Print(Offset * 100D / count, 3):R}%:
+	model={Processes.Count} net(s)	accuracy,best={Print(accuracy * 100, 4):R}
+	---------------------------------------------
+	instm={record.extra}	output={Print(record.result[0], 3):R}	predict,avg={Print(result, 3):R}
+	data loading={GetDurationString(record.duration.Value)}	prediction={GetDurationString(duration)}
+	---------------------------------------------
+:	left-time={GetDurationString(offset_interval * remain_count)}";
 
             if (OutOfLine.Count > 0)
             {
@@ -260,9 +256,9 @@ namespace Photon.NeuralNetwork.Opertat.Debug
                 foreach (var prc in OutOfLine)
                     accuracy = Math.Max(prc.accuracy, accuracy);
 
-                print += "\r\n\t" +
-                    $"out={OutOfLine.Count} net(s)\t" +
-                    $"accuracy,best={Print(accuracy * 100, 4):R}";
+                print += @$"
+	--------------------------------------
+	out={OutOfLine.Count} net(s)	accuracy,best={Print(accuracy * 100, 4):R}";
             }
 
             if (clearing == null) Debugger.Console.CommitLine();
