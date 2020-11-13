@@ -8,8 +8,9 @@ namespace Photon.NeuralNetwork.Opertat.Debug.Tools
     {
         private readonly LinkedList<long> history =
             new LinkedList<long>();
-        private uint max_history_count = 100;
+        private uint max_history_count = 1000;
         private long last_printing_time = DateTime.Now.Ticks;
+        private long current_sum = 0;
 
         public uint MaxHistory
         {
@@ -24,12 +25,15 @@ namespace Photon.NeuralNetwork.Opertat.Debug.Tools
             last_printing_time = point;
 
             history.AddLast(value);
-            while (history.Count > MaxHistory)
-                history.RemoveFirst();
+            current_sum += value;
 
-            value = 0;
-            foreach (var v in history) value += v;
-            return value / history.Count;
+            while (history.Count > max_history_count)
+            {
+                current_sum -= history.First.Value;
+                history.RemoveFirst();
+            }
+
+            return current_sum / history.Count;
         }
     }
 }

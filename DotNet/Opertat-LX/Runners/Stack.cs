@@ -20,7 +20,7 @@ namespace Photon.NeuralNetwork.Opertat.Debug
         public const string NAME = "stk";
         public override string Name => NAME;
 
-        private int company_step = 0, last_instrument = 0;
+        private int company_step = 0;
         private List<Step> cumulative_frequency_training,
             cumulative_frequency_validation, cumulative_frequency_evaluation;
         private SqlCommand sqlite;
@@ -97,7 +97,10 @@ namespace Photon.NeuralNetwork.Opertat.Debug
                 sqlite.CommandType = CommandType.StoredProcedure;
             }
 
-            time_reporter = new TimeReporter();
+            time_reporter = new TimeReporter
+            {
+                MaxHistory = setting.Process.LeftTimeEstimateLength
+            };
         }
         protected override NeuralNetworkImage[] BrainInitializer()
         {
@@ -203,10 +206,8 @@ namespace Photon.NeuralNetwork.Opertat.Debug
         {
             // for clear the last report
             string clearing;
-            if (Stage == TraingingStages.Training && last_instrument != (int)record.extra || Offset == 0)
-                clearing = null;
+            if (Offset == 0) clearing = null;
             else clearing = Regex.Replace(print, "[^ \t\r\n]", " ");
-            last_instrument = (int)record.extra;
 
             // prepare report info
             double accuracy = 0, result = 0;
@@ -245,11 +246,10 @@ namespace Photon.NeuralNetwork.Opertat.Debug
             print =
 @$"#{Epoch},{Stage.ToString().ToLower()},{PrintUnsign(Offset * 100D / count, 3):R}%:
 	model={Processes.Count} net(s)	accuracy,best={PrintUnsign(accuracy * 100, 4):R}
-	---------------------------------------------
 	instm={record.extra}	output={Print(record.result[0], 3):R}	predict,avg={Print(result, 3):R}
 	data loading={GetDurationString(record.duration.Value)}	prediction={GetDurationString(duration)}
-	---------------------------------------------
-:	left-time={GetDurationString(offset_interval * remain_count)}";
+:	left-time={GetDurationString(offset_interval * remain_count)}
+	---------------------------------------------";
 
             if (OutOfLine.Count > 0)
             {
@@ -258,8 +258,8 @@ namespace Photon.NeuralNetwork.Opertat.Debug
                     accuracy = Math.Max(prc.accuracy, accuracy);
 
                 print += @$"
-	--------------------------------------
-	out={OutOfLine.Count} net(s)	accuracy,best={PrintUnsign(accuracy * 100, 4):R}";
+	out={OutOfLine.Count} net(s)	accuracy,best={PrintUnsign(accuracy * 100, 4):R}
+	---------------------------------------------";
             }
 
             if (clearing == null) Debugger.Console.CommitLine();
@@ -305,17 +305,23 @@ namespace Photon.NeuralNetwork.Opertat.Debug
         }
 
         private readonly static string sql_counting = $@"
-select		InstrumentID,
-            sum(iif(RecordType = 'T', 1, 0)) - {RESULT_COUNT} as TrainingCount,
-            sum(iif(RecordType = 'V', 1, 0)) - {RESULT_COUNT} as ValidationCount,
-            sum(iif(RecordType = 'E', 1, 0)) - {RESULT_COUNT} as EvaluationCount
-from		Trade
-where		RecordType is not null
-group by	InstrumentID
-having      sum(iif(RecordType = 'T', 1, 0)) > {RESULT_COUNT}
-        and sum(iif(RecordType = 'V', 1, 0)) > {RESULT_COUNT}
-        and sum(iif(RecordType = 'E', 1, 0)) > {RESULT_COUNT}
-order by    InstrumentID";
+SELECT		InstrumentID,
+			iif(TrainingCount > 0, TrainingCount, 0) as TrainingCount,
+			iif(ValidationCount > 0, ValidationCount, 0) as ValidationCount,
+			iif(EvaluationCount > 0, EvaluationCount, 0) as EvaluationCount
+from (
+	select		InstrumentID,
+				sum(iif(RecordType = 'T', 1, 0)) - {RESULT_COUNT} as TrainingCount,
+				sum(iif(RecordType = 'V', 1, 0)) - {RESULT_COUNT} as ValidationCount,
+				sum(iif(RecordType = 'E', 1, 0)) - {RESULT_COUNT} as EvaluationCount
+	from		Trade
+	where		RecordType is not null
+	group by	InstrumentID
+	having		sum(iif(RecordType = 'T', 1, 0)) > {RESULT_COUNT}
+			or	sum(iif(RecordType = 'V', 1, 0)) > {RESULT_COUNT}
+			or	sum(iif(RecordType = 'E', 1, 0)) > {RESULT_COUNT}
+) ins_q
+order by	InstrumentID";
         #endregion
 
     }

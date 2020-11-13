@@ -13,6 +13,7 @@ namespace Photon.NeuralNetwork.Opertat.Debug.Config
         public const string key = "process";
         private const string process_stage = "stage";
         private const string process_offset = "offset";
+        private const string process_left_time = "left-time-estimate-length";
 
         public TraingingStages? Stage
         {
@@ -32,6 +33,12 @@ namespace Photon.NeuralNetwork.Opertat.Debug.Config
         {
             get { return GetSetting<uint?>(process_offset, null); }
             set { SetSetting(process_offset, value); }
+        }
+
+        public uint LeftTimeEstimateLength
+        {
+            get { return GetSetting<uint>(process_left_time, 1000); }
+            set { SetSetting(process_left_time, value); }
         }
     }
 }
