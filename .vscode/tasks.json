@@ -7,7 +7,7 @@
             "type": "process",
             "args": [
                 "build",
-                "${workspaceFolder}/DotNet/Opertat-LX/Opertat-LX.csproj",
+                "${workspaceFolder}/DotNet/Chista-LX/Chista-LX.csproj",
                 "/property:GenerateFullPaths=true",
                 "/consoleloggerparameters:NoSummary"
             ],
@@ -19,7 +19,7 @@
             "type": "process",
             "args": [
                 "publish",
-                "${workspaceFolder}/Opertat.sln",
+                "${workspaceFolder}/Chista.sln",
                 "--configuration",
                 "Release",
                 "/property:GenerateFullPaths=true",
@@ -36,7 +36,7 @@
             "args": [
                 "watch",
                 "run",
-                "${workspaceFolder}/DotNet/Opertat-LX/Opertat-LX.csproj",
+                "${workspaceFolder}/DotNet/Chista-LX/Chista-LX.csproj",
                 "/property:GenerateFullPaths=true",
                 "/consoleloggerparameters:NoSummary"
             ],

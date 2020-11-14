@@ -10,9 +10,9 @@
             "request": "launch",
             "preLaunchTask": "build",
             // If you have changed target frameworks, make sure to update the program path.
-            "program": "${workspaceFolder}/DotNet/Opertat-LX/bin/Debug/netcoreapp3.1/opertat.dll",
+            "program": "${workspaceFolder}/DotNet/Chista-LX/bin/Debug/netcoreapp3.1/chista.dll",
             "args": [],
-            "cwd": "${workspaceFolder}/DotNet/Opertat-LX",
+            "cwd": "${workspaceFolder}/DotNet/Chista-LX",
             // For more information about the 'console' field, see https://aka.ms/VSCode-CS-LaunchJson-Console
             // integratedTerminal
             "console": "externalTerminal",
