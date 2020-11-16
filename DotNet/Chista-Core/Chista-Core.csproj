@@ -2,10 +2,10 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
-    <RootNamespace>Photon.NeuralNetwork.Chista.Core</RootNamespace>
+    <RootNamespace>Photon.NeuralNetwork.Chista</RootNamespace>
     <AssemblyName>opertat.core</AssemblyName>
     <LangVersion>8.0</LangVersion>
-    <Version>2.6.90</Version>
+    <Version>2.7.91</Version>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">

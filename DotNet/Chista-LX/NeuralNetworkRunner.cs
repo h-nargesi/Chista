@@ -11,10 +11,11 @@ using Photon.NeuralNetwork.Chista.Serializer;
 
 namespace Photon.NeuralNetwork.Chista.Debug
 {
-    public abstract class NeuralNetworkRunner : Instructor, IDisposable
+    public abstract class NeuralNetworkRunner : Instructor
     {
         protected readonly RootConfigHandler setting;
-        public NeuralNetworkRunner()
+
+        public NeuralNetworkRunner(IDataProvider provider) : base(provider)
         {
             setting = new RootConfigHandler($"setting-{Name}.json");
         }
@@ -77,7 +78,28 @@ namespace Photon.NeuralNetwork.Chista.Debug
                     });
             }
         }
-        protected abstract NeuralNetworkImage[] BrainInitializer();
+        private NeuralNetworkImage[] BrainInitializer()
+        {
+            var conduction = setting.Brain.Layers.Conduction;
+            var layers = setting.Brain.Layers.NodesCount;
+            if (layers == null || layers.Length == 0)
+            {
+                setting.Brain.Layers.NodesCount = new int[0];
+                throw new Exception("the default layer's node count is not set.");
+            }
+
+            var image = new NeuralNetworkInitializer()
+                .SetInputSize(2)
+                .AddLayer(conduction == "soft-relu" ? (IConduction)new SoftReLU() : new ReLU(), layers)
+                .AddLayer(new Sigmoind(), 1)
+                .SetCorrection(new Errorest())
+                .SetDataConvertor(
+                    new DataRange(SignalRange, SignalHeight),
+                    new DataRange(SignalRange * 2, SignalRange))
+                .Image();
+
+            return new NeuralNetworkImage[] { image };
+        }
         protected override void OnError(Exception ex)
         {
             Debugger.Console.WriteCommitLine(ex.Message);

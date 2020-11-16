@@ -7,12 +7,32 @@ using System.Threading.Tasks;
 
 namespace Photon.NeuralNetwork.Chista.Trainer
 {
-    public abstract class Instructor : IDisposable
+    public class Instructor
     {
+        public Instructor(IDataProvider data_provider)
+        {
+            this.data_provider = data_provider ?? throw new ArgumentNullException(nameof(data_provider));
+        }
+
         #region Progress Control
-        public uint TrainingCount { get; set; }
-        public uint ValidationCount { get; set; }
-        public uint EvaluationCount { get; set; }
+
+        private IDataProvider data_provider;
+        public IDataProvider DataProvider
+        {
+            get { return data_provider; }
+            set
+            {
+                if (value == null) throw new ArgumentNullException(nameof(value));
+                else if (!Stopped) throw new Exception(
+                    "Can not change the data-provider while instructor is running.");
+
+                Stage = TraingingStages.Training;
+                Offset = 0;
+                Epoch = 0;
+
+                data_provider = value;
+            }
+        }
         public TraingingStages Stage { get; set; } = TraingingStages.Training;
         public uint Offset { get; set; }
         public uint Epoch { get; set; }
@@ -22,17 +42,17 @@ namespace Photon.NeuralNetwork.Chista.Trainer
             switch (Stage)
             {
                 case TraingingStages.Training:
-                    if (progress >= TrainingCount)
+                    if (progress >= data_provider.TrainingCount)
                         return (0, TraingingStages.Validation);
                     else return (progress, Stage);
 
                 case TraingingStages.Validation:
-                    if (progress >= ValidationCount)
+                    if (progress >= data_provider.ValidationCount)
                         return (0, TraingingStages.Evaluation);
                     else return (progress, Stage);
 
                 case TraingingStages.Evaluation:
-                    if (progress >= EvaluationCount)
+                    if (progress >= data_provider.EvaluationCount)
                         return (0, TraingingStages.Training);
                     else return (progress, Stage);
 
@@ -89,35 +109,37 @@ namespace Photon.NeuralNetwork.Chista.Trainer
         #endregion
 
 
-        #region Abstract Stuff
-        protected abstract void OnInitialize();
-        protected abstract Task<Record> PrepareNextData(uint progress, TraingingStages stage);
-        protected abstract void ReflectFinished(Record record, long duration);
-        protected abstract void OnError(Exception ex);
-        protected abstract void OnStopped();
+        #region Events
+        public event OnInitializeHandler OnInitialize;
+        public event ReflectFinishedHandler ReflectFinished;
+        public event OnErrorHandler OnError;
+        public event OnStoppedHandler OnStopped;
         #endregion
 
 
         #region Progress Job
 
-        private readonly ReaderWriterLock locker = new ReaderWriterLock();
+        // process locker is used for waiting Stop method until training task stop
+        private readonly ReaderWriterLock process_locker = new ReaderWriterLock();
         public bool Canceling { get; private set; } = false;
-        public bool Stopped => locker.IsWriterLockHeld;
+        public bool Stopped => process_locker.IsWriterLockHeld;
         public Task Start()
         {
             return Task.Run(() =>
             {
                 Canceling = false;
-                locker.AcquireWriterLock(4096);
+                process_locker.AcquireWriterLock(4096);
                 Task<Record> record_geter = null;
 
                 try
                 {
+                    // initialize data-provider
+                    data_provider.Initialize();
                     // initialize by developer
-                    OnInitialize();
+                    OnInitialize?.Invoke(this);
 
                     // fetch next record
-                    record_geter = PrepareNextData(Offset, Stage);
+                    record_geter = data_provider.PrepareNextData(Offset, Stage);
 
                     // training loop
                     while (!Canceling && processes.Count > 0)
@@ -129,7 +151,7 @@ namespace Photon.NeuralNetwork.Chista.Trainer
                         // next record'offset and stage
                         var (next_offset, next_stage) = GetNextRound();
                         // fetch next record
-                        record_geter = PrepareNextData(next_offset, next_stage);
+                        record_geter = data_provider.PrepareNextData(next_offset, next_stage);
 
                         if (record != null && record.data != null && record.result != null)
                         {
@@ -182,7 +204,7 @@ namespace Photon.NeuralNetwork.Chista.Trainer
 
                             if (Canceling) break;
                             // call event
-                            ReflectFinished(record, DateTime.Now.Ticks - start_time);
+                            ReflectFinished?.Invoke(this, record, DateTime.Now.Ticks - start_time);
 
                             if (next_offset == 0)
                                 lock (processes)
@@ -205,7 +227,8 @@ namespace Photon.NeuralNetwork.Chista.Trainer
                                                 // go to next epoch
                                                 next_stage = TraingingStages.Training;
                                                 // fetch next record
-                                                record_geter = PrepareNextData(next_offset, next_stage);
+                                                record_geter = data_provider.PrepareNextData(
+                                                    next_offset, next_stage);
                                             }
                                             break;
                                         case TraingingStages.Evaluation:
@@ -235,35 +258,23 @@ namespace Photon.NeuralNetwork.Chista.Trainer
                         Stage = next_stage;
                     }
                 }
-                catch (Exception ex) { OnError(ex); }
-                finally { locker.ReleaseWriterLock(); }
+                catch (Exception ex) { OnError?.Invoke(this, ex); }
+                finally { process_locker.ReleaseWriterLock(); }
             });
         }
-        public void Dispose()
+        public void Stop()
         {
             Canceling = true;
-            locker.AcquireWriterLock(4096);
-            try { OnStopped(); }
-            finally { locker.ReleaseWriterLock(); }
+            if (OnStopped != null)
+            {
+                // wait for training task finish
+                process_locker.AcquireWriterLock(4096);
+                try { OnStopped(this); }
+                finally { process_locker.ReleaseWriterLock(); }
+            }
         }
         #endregion
 
-
-        protected class Record
-        {
-            public readonly double[] data, result;
-            public readonly object extra;
-            public readonly long? duration;
-
-            public Record(double[] data, double[] result,
-                object extra = null, long? duration = null)
-            {
-                this.data = data;
-                this.result = result;
-                this.extra = extra;
-                this.duration = duration;
-            }
-        }
 
         public static string GetDurationString(long duration)
         {

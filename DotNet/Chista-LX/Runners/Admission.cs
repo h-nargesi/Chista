@@ -10,7 +10,7 @@ using Photon.NeuralNetwork.Chista.Trainer;
 
 namespace Photon.NeuralNetwork.Chista.Debug
 {
-    public class Admission : NeuralNetworkRunner
+    public class Admission : IDataProvider
     {
         public int Slowness { get; set; } = 200;
         public override string Name => NAME;
