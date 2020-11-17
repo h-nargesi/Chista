@@ -5,7 +5,7 @@ using System.Text;
 
 namespace Photon.NeuralNetwork.Chista.Serializer
 {
-    public static class GeneralSerializer
+    public static class GeneralFileRestore
     {
         public static object Restore(string path)
         {
