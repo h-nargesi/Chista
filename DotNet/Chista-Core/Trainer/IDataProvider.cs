@@ -6,7 +6,7 @@ using Photon.NeuralNetwork.Chista.Trainer;
 
 namespace Photon.NeuralNetwork.Chista.Trainer
 {
-    public interface IDataProvider
+    public interface IDataProvider : IDisposable
     {
         public uint TrainingCount { get; }
         public uint ValidationCount { get; }

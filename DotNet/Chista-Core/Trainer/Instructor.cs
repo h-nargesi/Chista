@@ -77,26 +77,24 @@ namespace Photon.NeuralNetwork.Chista.Trainer
         {
             lock (processes) processes.RemoveAt(index);
         }
-        public void LoadProgress(
-            IReadOnlyList<ITrainProcess> progresses,
-            IReadOnlyList<BrainInfo> out_of_line)
+        public void LoadProgress(ProcessInfo process_info)
         {
             if (!Stopped) throw new Exception("The process is not stoped.");
 
-            if (progresses == null)
-                throw new ArgumentNullException(nameof(progresses));
+            if (process_info == null)
+                throw new ArgumentNullException(nameof(process_info));
 
-            this.processes.Clear();
-            foreach (var iprg in progresses)
+            processes.Clear();
+            foreach (var iprg in process_info.Processes)
                 if (iprg is TrainProcess prg)
-                    this.processes.Add(prg);
+                    processes.Add(prg);
                 else throw new Exception("Invalid progress type.");
 
-            this.out_of_line.Clear();
+            out_of_line.Clear();
             if (out_of_line != null)
-                foreach (var ibrain in out_of_line)
+                foreach (var ibrain in process_info.OutOfLine)
                     if (ibrain is BrainInfo brn)
-                        this.out_of_line.Add(brn);
+                        out_of_line.Add(brn);
                     else throw new Exception("Invalid brain-info type.");
         }
         public void AddBrainInfo(BrainInfo brain)
@@ -270,7 +268,11 @@ namespace Photon.NeuralNetwork.Chista.Trainer
             {
                 // wait for training task finish
                 process_locker.AcquireWriterLock(4096);
-                try { OnStopped(this); }
+                try
+                {
+                    data_provider.Dispose();
+                    OnStopped(this);
+                }
                 finally { process_locker.ReleaseWriterLock(); }
             }
         }
