@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<classpath>
-	<classpathentry kind="src" path="src"/>
-	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
-	<classpathentry kind="lib" path="D:/Hamed Nargesi/Libararies/Opertat/Data/libarary/ejml-v0.39-libs/ejml-core-0.39.jar"/>
-	<classpathentry kind="lib" path="D:/Hamed Nargesi/Libararies/Opertat/Data/libarary/ejml-v0.39-libs/ejml-ddense-0.39.jar"/>
-	<classpathentry kind="output" path="bin"/>
-</classpath>
