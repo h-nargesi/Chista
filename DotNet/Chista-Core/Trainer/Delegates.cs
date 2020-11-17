@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace Photon.NeuralNetwork.Chista.Trainer
+namespace Photon.NeuralNetwork.Chista.Trainer.Delegates
 {
     public delegate void OnInitializeHandler(Instructor instructor);
     public delegate void ReflectFinishedHandler(Instructor instructor, Record record, long duration);

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Photon.NeuralNetwork.Chista.Trainer.Delegates;
 
 namespace Photon.NeuralNetwork.Chista.Trainer
 {
