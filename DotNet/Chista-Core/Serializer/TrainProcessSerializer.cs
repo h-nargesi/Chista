@@ -109,7 +109,7 @@ namespace Photon.NeuralNetwork.Chista.Serializer
             }
         }
 
-        public static void Restore(string path, Instructor instructor)
+        public static ProcessInfo Restore(string path)
         {
             if (path == null)
                 throw new ArgumentNullException(nameof(path));
@@ -125,9 +125,9 @@ namespace Photon.NeuralNetwork.Chista.Serializer
                 throw new Exception("Invalid nnp file signature");
 
             // restore file
-            Restore(stream, instructor);
+            return Restore(stream);
         }
-        public static void Restore(FileStream stream, Instructor instructor)
+        public static ProcessInfo Restore(FileStream stream)
         {
             if (stream == null)
                 throw new ArgumentNullException(nameof(stream), "The writer stream is not defined");
@@ -143,30 +143,29 @@ namespace Photon.NeuralNetwork.Chista.Serializer
             if (version <= 5)
                 throw new Exception("This version of nnp is not supported any more.");
 
-            switch (version)
+            return version switch
             {
-                case VERSION:
-                    RestoreLastVersion(stream, instructor);
-                    break;
-                default: throw new Exception("This version of nnp list is not supported");
+                VERSION => RestoreLastVersion(stream),
+                _ => throw new Exception("This version of nnp list is not supported"),
             };
         }
-        private static void RestoreLastVersion(FileStream stream, Instructor instructor)
+        private static ProcessInfo RestoreLastVersion(FileStream stream)
         {
+            var process_info = new ProcessInfo();
             var buffer = new byte[8];
 
             stream.Read(buffer, 0, 1);
-            instructor.Stage = (TraingingStages)buffer[0];
+            process_info.Stage = (TraingingStages)buffer[0];
 
             stream.Read(buffer, 0, 4);
-            instructor.Offset = BitConverter.ToUInt32(buffer, 0);
+            process_info.Offset = BitConverter.ToUInt32(buffer, 0);
 
             stream.Read(buffer, 0, 4);
-            instructor.Epoch = BitConverter.ToUInt32(buffer, 0);
+            process_info.Epoch = BitConverter.ToUInt32(buffer, 0);
 
             stream.Read(buffer, 0, 4);
             var count = BitConverter.ToInt32(buffer, 0);
-            var process = new List<TrainProcess>(count);
+            process_info.Processes = new List<ITrainProcess>(count);
 
             for (var i = 0; i < count; i++)
             {
@@ -196,7 +195,7 @@ namespace Photon.NeuralNetwork.Chista.Serializer
                 if (buffer[0] == 0) best_image = null;
                 else best_image = NeuralNetworkSerializer.Restore(stream);
 
-                process.Add(TrainProcess.RestoreInfo(
+                process_info.Processes.Add(TrainProcess.RestoreInfo(
                     new ProgressState(
                         current_image, record_count, current_total_accruacy,
                         accuracy_chain, best_image, is_out_of_line)));
@@ -204,7 +203,7 @@ namespace Photon.NeuralNetwork.Chista.Serializer
 
             stream.Read(buffer, 0, 4);
             count = BitConverter.ToInt32(buffer, 0);
-            var out_of_line = new List<BrainInfo>(count);
+            process_info.OutOfLine = new List<BrainInfo>(count);
 
             for (var i = 0; i < count; i++)
             {
@@ -213,13 +212,14 @@ namespace Photon.NeuralNetwork.Chista.Serializer
 
                 var image = NeuralNetworkSerializer.Restore(stream);
 
-                out_of_line[i] = new BrainInfo(image, accruacy);
+                process_info.OutOfLine.Add(new BrainInfo(image, accruacy));
             }
 
-            instructor.LoadProgress(process, out_of_line);
+            return process_info;
         }
 
 
+        public static int SIGNATURE_LENGTH => FILE_TYPE_SIGNATURE.Length;
         private readonly static byte[] FILE_TYPE_SIGNATURE;
         static TrainProcessSerializer()
         {

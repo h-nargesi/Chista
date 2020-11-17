@@ -141,7 +141,7 @@ namespace Photon.NeuralNetwork.Chista.Serializer
             return new NeuralNetworkImage(layers, error, input_convertor, output_convertor, null);
         }
 
-
+        public static int SIGNATURE_LENGTH => FILE_TYPE_SIGNATURE.Length;
         private readonly static byte[] FILE_TYPE_SIGNATURE;
         static NeuralNetworkSerializer()
         {
