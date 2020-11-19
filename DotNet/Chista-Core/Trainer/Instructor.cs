@@ -96,6 +96,10 @@ namespace Photon.NeuralNetwork.Chista.Trainer
                     if (ibrain is BrainInfo brn)
                         out_of_line.Add(brn);
                     else throw new Exception("Invalid brain-info type.");
+
+            Epoch = process_info.Epoch;
+            Stage = process_info.Stage;
+            Offset = process_info.Offset;
         }
         public void AddBrainInfo(BrainInfo brain)
         {
@@ -121,7 +125,7 @@ namespace Photon.NeuralNetwork.Chista.Trainer
         // process locker is used for waiting Stop method until training task stop
         private readonly ReaderWriterLock process_locker = new ReaderWriterLock();
         public bool Canceling { get; private set; } = false;
-        public bool Stopped => process_locker.IsWriterLockHeld;
+        public bool Stopped => !process_locker.IsWriterLockHeld;
         public Task Start()
         {
             return Task.Run(() =>
@@ -264,17 +268,15 @@ namespace Photon.NeuralNetwork.Chista.Trainer
         public void Stop()
         {
             Canceling = true;
-            if (OnStopped != null)
+
+            // wait for training task finish
+            process_locker.AcquireWriterLock(4096);
+            try
             {
-                // wait for training task finish
-                process_locker.AcquireWriterLock(4096);
-                try
-                {
-                    data_provider.Dispose();
-                    OnStopped(this);
-                }
-                finally { process_locker.ReleaseWriterLock(); }
+                data_provider.Dispose();
+                OnStopped?.Invoke(this);
             }
+            finally { process_locker.ReleaseWriterLock(); }
         }
         #endregion
 
