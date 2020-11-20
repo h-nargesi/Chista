@@ -123,146 +123,151 @@ namespace Photon.NeuralNetwork.Chista.Trainer
         #region Progress Job
 
         // process locker is used for waiting Stop method until training task stop
-        private readonly ReaderWriterLock process_locker = new ReaderWriterLock();
+        private readonly object process_locker = new object();
         public bool Canceling { get; private set; } = false;
-        public bool Stopped => !process_locker.IsWriterLockHeld;
+        public bool Stopped { get; private set; } = true;
         public Task Start()
         {
+            Canceling = false;
             return Task.Run(() =>
             {
-                Canceling = false;
-                process_locker.AcquireWriterLock(4096);
                 Task<Record> record_geter = null;
 
-                try
-                {
-                    // initialize data-provider
-                    data_provider.Initialize();
-                    // initialize by developer
-                    OnInitialize?.Invoke(this);
-
-                    // fetch next record
-                    record_geter = data_provider.PrepareNextData(Offset, Stage);
-
-                    // training loop
-                    while (!Canceling && processes.Count > 0)
+                lock (process_locker)
+                    try
                     {
-                        // current record
-                        record_geter.Wait();
-                        var record = record_geter.Result;
+                        Stopped = false;
 
-                        // next record'offset and stage
-                        var (next_offset, next_stage) = GetNextRound();
+                        // initialize data-provider
+                        data_provider.Initialize();
+                        // initialize by developer
+                        OnInitialize?.Invoke(this);
+
                         // fetch next record
-                        record_geter = data_provider.PrepareNextData(next_offset, next_stage);
+                        record_geter = data_provider.PrepareNextData(Offset, Stage);
 
-                        if (record != null && record.data != null && record.result != null)
+                        // training loop
+                        while (!Canceling && processes.Count > 0)
                         {
-                            // reporting vriables
-                            var start_time = DateTime.Now.Ticks;
+                            // current record
+                            record_geter.Wait();
+                            var record = record_geter.Result;
 
-                            if (Canceling) break;
+                            // next record'offset and stage
+                            var (next_offset, next_stage) = GetNextRound();
+                            // fetch next record
+                            record_geter = data_provider.PrepareNextData(next_offset, next_stage);
 
-                            lock (processes)
-                                switch (Stage)
-                                {
-                                    case TraingingStages.Training:
-                                        Parallel.ForEach(processes, (process, state, index) =>
-                                        {
-                                            // for sure
-                                            if (process.OutOfLine) return;
-                                            // train this neural network
-                                            var flash = process.Brain.Train(record.data, record.result);
-                                            // change progress state
-                                            process.ChangeSatate(flash);
-                                        });
-                                        break;
-                                    case TraingingStages.Validation:
-                                        Parallel.ForEach(processes, (process, state, index) =>
-                                        {
-                                            // for sure
-                                            if (process.OutOfLine) return;
-                                            // test this neural network with validation data
-                                            var flash = process.Brain.Test(record.data);
-                                            // calculate total error
-                                            process.Brain.FillTotalError(flash, record.result);
-                                            // change progress state
-                                            process.ChangeSatate(flash);
-                                        });
-                                        break;
-                                    case TraingingStages.Evaluation:
-                                        Parallel.ForEach(processes, (process, state, index) =>
-                                        {
-                                            // do jus out-of-line processes
-                                            if (!process.OutOfLine) return;
-                                            // test this neural network with evaluation data
-                                            var flash = process.Brain.Test(record.data);
-                                            // calculate total error
-                                            process.Brain.FillTotalError(flash, record.result);
-                                            // change progress state
-                                            process.ChangeSatate(flash);
-                                        });
-                                        break;
-                                }
+                            if (record != null && record.data != null && record.result != null)
+                            {
+                                // reporting vriables
+                                var start_time = DateTime.Now.Ticks;
 
-                            if (Canceling) break;
-                            // call event
-                            ReflectFinished?.Invoke(this, record, DateTime.Now.Ticks - start_time);
+                                if (Canceling) break;
 
-                            if (next_offset == 0)
                                 lock (processes)
                                     switch (Stage)
                                     {
                                         case TraingingStages.Training:
-                                            // if next round is first round of stage
-                                            // if this round is end round of stage
-                                            foreach (var progress in processes)
-                                                progress.FinishCurrentState(true);
+                                            Parallel.ForEach(processes, (process, state, index) =>
+                                            {
+                                                // for sure
+                                                if (process.OutOfLine) return;
+                                                // train this neural network
+                                                var flash = process.Brain.Train(record.data, record.result);
+                                                // change progress state
+                                                process.ChangeSatate(flash);
+                                            });
                                             break;
                                         case TraingingStages.Validation:
-                                            // if next round is first round of stage
-                                            // if this round is end round of stage
-                                            var we_have_out_of_line = false;
-                                            foreach (var progress in processes)
-                                                we_have_out_of_line |= progress.FinishCurrentState(false);
-                                            if (!we_have_out_of_line)
+                                            Parallel.ForEach(processes, (process, state, index) =>
                                             {
-                                                // go to next epoch
-                                                next_stage = TraingingStages.Training;
-                                                // fetch next record
-                                                record_geter = data_provider.PrepareNextData(
-                                                    next_offset, next_stage);
-                                            }
+                                                // for sure
+                                                if (process.OutOfLine) return;
+                                                // test this neural network with validation data
+                                                var flash = process.Brain.Test(record.data);
+                                                // calculate total error
+                                                process.Brain.FillTotalError(flash, record.result);
+                                                // change progress state
+                                                process.ChangeSatate(flash);
+                                            });
                                             break;
                                         case TraingingStages.Evaluation:
-                                            // if next round is first round of stage
-                                            // if this round is end round of stage
-                                            foreach (var progress in processes)
-                                                progress.FinishCurrentState(false);
-                                            // if next round is first round of stage
-                                            // if this round is end round of stage
-                                            for (int p = 0; p < processes.Count;)
-                                                if (!processes[p].OutOfLine) p++;
-                                                else
-                                                {
-                                                    out_of_line.Add(new BrainInfo(
-                                                        processes[p].BestBrainImage,
-                                                        processes[p].BestBrainAccuracy));
-                                                    processes.RemoveAt(p);
-                                                }
+                                            Parallel.ForEach(processes, (process, state, index) =>
+                                            {
+                                                // do jus out-of-line processes
+                                                if (!process.OutOfLine) return;
+                                                // test this neural network with evaluation data
+                                                var flash = process.Brain.Test(record.data);
+                                                // calculate total error
+                                                process.Brain.FillTotalError(flash, record.result);
+                                                // change progress state
+                                                process.ChangeSatate(flash);
+                                            });
                                             break;
                                     }
+
+                                if (Canceling) break;
+                                // call event
+                                ReflectFinished?.Invoke(this, record, DateTime.Now.Ticks - start_time);
+
+                                if (next_offset == 0)
+                                    lock (processes)
+                                        switch (Stage)
+                                        {
+                                            case TraingingStages.Training:
+                                                // if next round is first round of stage
+                                                // if this round is end round of stage
+                                                foreach (var progress in processes)
+                                                    progress.FinishCurrentState(true);
+                                                break;
+                                            case TraingingStages.Validation:
+                                                // if next round is first round of stage
+                                                // if this round is end round of stage
+                                                var we_have_out_of_line = false;
+                                                foreach (var progress in processes)
+                                                    we_have_out_of_line |= progress.FinishCurrentState(false);
+                                                if (!we_have_out_of_line)
+                                                {
+                                                    // go to next epoch
+                                                    next_stage = TraingingStages.Training;
+                                                    // fetch next record
+                                                    record_geter = data_provider.PrepareNextData(
+                                                        next_offset, next_stage);
+                                                }
+                                                break;
+                                            case TraingingStages.Evaluation:
+                                                // if next round is first round of stage
+                                                // if this round is end round of stage
+                                                foreach (var progress in processes)
+                                                    progress.FinishCurrentState(false);
+                                                // if next round is first round of stage
+                                                // if this round is end round of stage
+                                                for (int p = 0; p < processes.Count;)
+                                                    if (!processes[p].OutOfLine) p++;
+                                                    else
+                                                    {
+                                                        out_of_line.Add(new BrainInfo(
+                                                            processes[p].BestBrainImage,
+                                                            processes[p].BestBrainAccuracy));
+                                                        processes.RemoveAt(p);
+                                                    }
+                                                break;
+                                        }
+                            }
+
+                            // next offset
+                            if (next_offset == 0 && next_stage == TraingingStages.Training)
+                                Epoch++;
+                            Offset = next_offset;
+                            Stage = next_stage;
                         }
 
-                        // next offset
-                        if (next_offset == 0 && next_stage == TraingingStages.Training)
-                            Epoch++;
-                        Offset = next_offset;
-                        Stage = next_stage;
+                        // being sure that record geter is finished
+                        _ = record_geter.Result;
                     }
-                }
-                catch (Exception ex) { OnError?.Invoke(this, ex); }
-                finally { process_locker.ReleaseWriterLock(); }
+                    catch (Exception ex) { OnError?.Invoke(this, ex); }
+                    finally { data_provider.Dispose(); }
             });
         }
         public void Stop()
@@ -270,13 +275,11 @@ namespace Photon.NeuralNetwork.Chista.Trainer
             Canceling = true;
 
             // wait for training task finish
-            process_locker.AcquireWriterLock(4096);
-            try
+            lock (process_locker)
             {
-                data_provider.Dispose();
+                Stopped = true;
                 OnStopped?.Invoke(this);
             }
-            finally { process_locker.ReleaseWriterLock(); }
         }
         #endregion
 
