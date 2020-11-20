@@ -11,12 +11,12 @@ namespace Photon.NeuralNetwork.Chista.Trainer
         public readonly long? duration;
 
         public Record(double[] data, double[] result,
-            object extra = null, long? duration = null)
+            long? duration = null, object extra = null)
         {
             this.data = data;
             this.result = result;
-            this.extra = extra;
             this.duration = duration;
+            this.extra = extra;
         }
     }
 
