@@ -239,10 +239,6 @@ namespace Photon.NeuralNetwork.Chista.Trainer
                                         case TraingingStages.Evaluation:
                                             // if next round is first round of stage
                                             // if this round is end round of stage
-                                            foreach (var progress in processes)
-                                                progress.FinishCurrentState(false);
-                                            // if next round is first round of stage
-                                            // if this round is end round of stage
                                             for (int p = 0; p < processes.Count;)
                                                 if (!processes[p].OutOfLine) p++;
                                                 else
@@ -252,6 +248,9 @@ namespace Photon.NeuralNetwork.Chista.Trainer
                                                         processes[p].BestBrainAccuracy));
                                                     processes.RemoveAt(p);
                                                 }
+                                            // reset processs accuarcy info for next round
+                                            foreach (var progress in processes)
+                                                progress.FinishCurrentState(false);
                                             break;
                                     }
                         }

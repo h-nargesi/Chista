@@ -37,13 +37,14 @@ namespace Photon.NeuralNetwork.Chista.Trainer
         }
         public bool FinishCurrentState(bool is_training)
         {
+            if (!is_training)
+                OutOfLine = history.AddProgress(this);
+
             record_count = 0;
             total_accuracy = 0;
             CurrentAccuracy = 0;
 
-            if (!is_training)
-                return OutOfLine = history.AddProgress(this);
-            return false;
+            return !is_training && OutOfLine;
         }
 
         public NeuralNetworkImage BestBrainImage
