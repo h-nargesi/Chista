@@ -19,7 +19,7 @@ namespace Photon.NeuralNetwork.Chista.Trainer
 
         public bool AddProgress(ITrainProcess progress)
         {
-            if (history.Count < 1 || progress.CurrentAccuracy > history.First.Value.accuracy)
+            if (history.Count < 1 || progress.CurrentAccuracy > history.First.Value.Accuracy)
             {
                 history.Clear();
                 history.AddLast(new BrainInfo(progress.Brain.Image(), progress.CurrentAccuracy));
@@ -33,9 +33,9 @@ namespace Photon.NeuralNetwork.Chista.Trainer
                 int descenting_count = 0;
                 foreach (var info in history)
                 {
-                    if (prv_accuracy < info.accuracy) descenting_count = 0;
+                    if (prv_accuracy < info.Accuracy) descenting_count = 0;
                     else descenting_count++;
-                    prv_accuracy = info.accuracy;
+                    prv_accuracy = info.Accuracy;
                 }
 
                 if (descenting_count >= 4) return true;
@@ -48,7 +48,7 @@ namespace Photon.NeuralNetwork.Chista.Trainer
         {
             var c = 0;
             var chain = new double[history.Count];
-            foreach (var info in history) chain[c++] = info.accuracy;
+            foreach (var info in history) chain[c++] = info.Accuracy;
             return chain;
         }
         public static History Restore(double[] chain, NeuralNetworkImage best_image)

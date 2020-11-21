@@ -9,10 +9,27 @@ namespace Photon.NeuralNetwork.Chista.Trainer
         public BrainInfo(NeuralNetworkImage image, double accuracy)
         {
             this.image = image;
-            this.accuracy = accuracy;
+            Accuracy = accuracy;
         }
 
-        public readonly double accuracy;
         public readonly NeuralNetworkImage image;
+        private int record_count;
+        private double total_accuracy;
+
+        public double Accuracy { get; private set; }
+        public Brain Brain { get; private set; }
+
+        public void InitBrain()
+        {
+            Brain = new Brain(image);
+            record_count = 0;
+            total_accuracy = 0;
+        }
+        public void ChangeSatate(NeuralNetworkFlash predict)
+        {
+            record_count++;
+            total_accuracy += predict.Accuracy;
+            Accuracy = total_accuracy / record_count;
+        }
     }
 }

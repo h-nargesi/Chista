@@ -52,7 +52,7 @@ namespace Photon.NeuralNetwork.Chista.Trainer
         }
         public double BestBrainAccuracy
         {
-            get { return history.BestBrainInfo.accuracy; }
+            get { return history.BestBrainInfo.Accuracy; }
         }
 
         public ProgressState Info()

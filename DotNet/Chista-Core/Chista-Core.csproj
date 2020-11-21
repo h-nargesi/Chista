@@ -6,6 +6,7 @@
     <AssemblyName>chista.core</AssemblyName>
     <LangVersion>8.0</LangVersion>
     <Version>2.7.91</Version>
+    <Authors>Hamed Nargesi</Authors>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">

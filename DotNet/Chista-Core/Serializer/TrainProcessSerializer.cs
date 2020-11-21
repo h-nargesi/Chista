@@ -102,7 +102,7 @@ namespace Photon.NeuralNetwork.Chista.Serializer
             // serialize out-of-line
             foreach (var bi in instructor.OutOfLine)
             {
-                buffer = BitConverter.GetBytes(bi.accuracy); // 8-bytes
+                buffer = BitConverter.GetBytes(bi.Accuracy); // 8-bytes
                 stream.Write(buffer, 0, buffer.Length);
 
                 NeuralNetworkSerializer.Serialize(stream, bi.image);
