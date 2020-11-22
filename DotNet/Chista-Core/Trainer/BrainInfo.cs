@@ -18,6 +18,7 @@ namespace Photon.NeuralNetwork.Chista.Trainer
 
         public double Accuracy { get; private set; }
         public Brain Brain { get; private set; }
+        public NeuralNetworkFlash LastPrediction { get; private set; }
 
         public void InitBrain()
         {
@@ -30,6 +31,7 @@ namespace Photon.NeuralNetwork.Chista.Trainer
             record_count++;
             total_accuracy += predict.Accuracy;
             Accuracy = total_accuracy / record_count;
+            LastPrediction = predict;
         }
     }
 }

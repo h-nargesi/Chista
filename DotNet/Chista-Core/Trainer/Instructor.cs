@@ -8,7 +8,7 @@ using Photon.NeuralNetwork.Chista.Trainer.Delegates;
 
 namespace Photon.NeuralNetwork.Chista.Trainer
 {
-    public class Instructor
+    public abstract class Instructor
     {
         public Instructor(IDataProvider data_provider)
         {
@@ -86,16 +86,15 @@ namespace Photon.NeuralNetwork.Chista.Trainer
                 throw new ArgumentNullException(nameof(process_info));
 
             processes.Clear();
-            foreach (var iprg in process_info.Processes)
-                if (iprg is TrainProcess prg)
-                    processes.Add(prg);
-                else throw new Exception("Invalid progress type.");
+            if (process_info.Processes != null)
+                foreach (var iprg in process_info.Processes)
+                    if (iprg is TrainProcess prg) processes.Add(prg);
+                    else throw new Exception("Invalid progress type.");
 
             out_of_line.Clear();
-            if (out_of_line != null)
+            if (process_info.OutOfLine != null)
                 foreach (var ibrain in process_info.OutOfLine)
-                    if (ibrain is BrainInfo brn)
-                        out_of_line.Add(brn);
+                    if (ibrain is BrainInfo brn) out_of_line.Add(brn);
                     else throw new Exception("Invalid brain-info type.");
 
             Epoch = process_info.Epoch;
@@ -114,10 +113,10 @@ namespace Photon.NeuralNetwork.Chista.Trainer
 
 
         #region Events
-        public event OnInitializeHandler OnInitialize;
-        public event ReflectFinishedHandler ReflectFinished;
-        public event OnErrorHandler OnError;
-        public event OnStoppedHandler OnStopped;
+        protected abstract void OnInitialize();
+        protected abstract void ReflectFinished(Record record, long duration, int running_code);
+        protected abstract void OnError(Exception ex);
+        protected abstract void OnStopped();
         #endregion
 
 
@@ -126,7 +125,7 @@ namespace Photon.NeuralNetwork.Chista.Trainer
         // process locker is used for waiting Stop method until training task stop
         private readonly ReaderWriterLock process_locker = new ReaderWriterLock();
         public bool Canceling { get; private set; } = false;
-        public bool Stopped => !process_locker.IsWriterLockHeld;
+        public bool Stopped { get; private set; } = true;
         public Task Start()
         {
             Canceling = false;
@@ -137,11 +136,12 @@ namespace Photon.NeuralNetwork.Chista.Trainer
                 try
                 {
                     process_locker.AcquireWriterLock(4000);
+                    Stopped = false;
 
                     // initialize data-provider
                     data_provider.Initialize();
                     // initialize by developer
-                    OnInitialize?.Invoke(this);
+                    OnInitialize();
 
                     // fetch next record
                     record_geter = data_provider.PrepareNextData(Offset, Stage);
@@ -209,7 +209,7 @@ namespace Photon.NeuralNetwork.Chista.Trainer
 
                             if (Canceling) break;
                             // call event
-                            ReflectFinished?.Invoke(this, record, DateTime.Now.Ticks - start_time);
+                            ReflectFinished(record, DateTime.Now.Ticks - start_time, 0);
 
                             if (next_offset == 0)
                                 lock (processes)
@@ -265,9 +265,10 @@ namespace Photon.NeuralNetwork.Chista.Trainer
                     // being sure that record geter is finished
                     _ = record_geter.Result;
                 }
-                catch (Exception ex) { OnError?.Invoke(this, ex); }
+                catch (Exception ex) { OnError(ex); }
                 finally
                 {
+                    Stopped = true;
                     process_locker.ReleaseWriterLock();
                     data_provider.Dispose();
                 }
@@ -283,13 +284,15 @@ namespace Photon.NeuralNetwork.Chista.Trainer
                 try
                 {
                     process_locker.AcquireWriterLock(4000);
+                    Stopped = false;
+
                     var EpochMax = Math.Max(this.EpochMax, 1U);
                     Stage = TraingingStages.Evaluation;
 
                     // initialize data-provider
                     data_provider.Initialize();
                     // initialize by developer
-                    OnInitialize?.Invoke(this);
+                    OnInitialize();
 
                     // fetch next record
                     record_geter = data_provider.PrepareNextData(Offset, Stage);
@@ -330,7 +333,8 @@ namespace Photon.NeuralNetwork.Chista.Trainer
 
                             if (Canceling) break;
                             // call event
-                            ReflectFinished?.Invoke(this, record, DateTime.Now.Ticks - start_time);
+                            ReflectFinished(record, DateTime.Now.Ticks - start_time, 
+                                (int)TraingingStages.Evaluation);
                         }
 
                         // next offset
@@ -343,9 +347,10 @@ namespace Photon.NeuralNetwork.Chista.Trainer
                     // being sure that record geter is finished
                     _ = record_geter.Result;
                 }
-                catch (Exception ex) { OnError?.Invoke(this, ex); }
+                catch (Exception ex) { OnError(ex); }
                 finally
                 {
+                    Stopped = true;
                     process_locker.ReleaseWriterLock();
                     data_provider.Dispose();
                 }
@@ -357,7 +362,7 @@ namespace Photon.NeuralNetwork.Chista.Trainer
 
             // wait for training task finish
             process_locker.AcquireWriterLock(10000);
-            try { OnStopped?.Invoke(this); }
+            try { OnStopped(); }
             finally { process_locker.ReleaseWriterLock(); }
         }
         #endregion
