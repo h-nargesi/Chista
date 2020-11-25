@@ -135,7 +135,7 @@ namespace Photon.NeuralNetwork.Chista.Trainer
 
                 try
                 {
-                    process_locker.AcquireWriterLock(4000);
+                    process_locker.AcquireWriterLock(-1);
                     Stopped = false;
 
                     // initialize data-provider
@@ -269,7 +269,8 @@ namespace Photon.NeuralNetwork.Chista.Trainer
                 finally
                 {
                     Stopped = true;
-                    process_locker.ReleaseWriterLock();
+                    if (process_locker.IsWriterLockHeld)
+                        process_locker.ReleaseWriterLock();
                     data_provider.Dispose();
                 }
             });
@@ -283,7 +284,7 @@ namespace Photon.NeuralNetwork.Chista.Trainer
 
                 try
                 {
-                    process_locker.AcquireWriterLock(4000);
+                    process_locker.AcquireWriterLock(-1);
                     Stopped = false;
 
                     var EpochMax = Math.Max(this.EpochMax, 1U);
@@ -333,7 +334,7 @@ namespace Photon.NeuralNetwork.Chista.Trainer
 
                             if (Canceling) break;
                             // call event
-                            ReflectFinished(record, DateTime.Now.Ticks - start_time, 
+                            ReflectFinished(record, DateTime.Now.Ticks - start_time,
                                 (int)TraingingStages.Evaluation);
                         }
 
@@ -351,7 +352,8 @@ namespace Photon.NeuralNetwork.Chista.Trainer
                 finally
                 {
                     Stopped = true;
-                    process_locker.ReleaseWriterLock();
+                    if (process_locker.IsWriterLockHeld)
+                        process_locker.ReleaseWriterLock();
                     data_provider.Dispose();
                 }
             });
@@ -361,7 +363,7 @@ namespace Photon.NeuralNetwork.Chista.Trainer
             Canceling = true;
 
             // wait for training task finish
-            process_locker.AcquireWriterLock(10000);
+            process_locker.AcquireWriterLock(-1);
             try { OnStopped(); }
             finally { process_locker.ReleaseWriterLock(); }
         }

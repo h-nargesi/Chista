@@ -9,7 +9,7 @@ namespace Photon.NeuralNetwork.Chista
 {
     public class Brain
     {
-        private const int lock_time_out = 1000;
+        private const int lock_time_out = -1;
         private readonly ReaderWriterLock locker = new ReaderWriterLock();
 
         private readonly Layer[] layers;
