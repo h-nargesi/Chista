@@ -117,6 +117,7 @@ namespace Photon.NeuralNetwork.Chista.Trainer
         protected abstract void ReflectFinished(Record record, long duration, int running_code);
         protected abstract void OnError(Exception ex);
         protected abstract void OnStopped();
+        protected abstract void OnFinished();
         #endregion
 
 
@@ -264,6 +265,8 @@ namespace Photon.NeuralNetwork.Chista.Trainer
 
                     // being sure that record geter is finished
                     _ = record_geter.Result;
+
+                    OnFinished();
                 }
                 catch (Exception ex) { OnError(ex); }
                 finally
