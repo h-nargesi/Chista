@@ -298,25 +298,8 @@ namespace Photon.NeuralNetwork.Chista
             // calculate total error of network result
             flash.TotalError = delta.PointwiseAbs().Sum();
         }
-        public double[] Errors(NeuralNetworkFlash flash, double[] values)
-        {
-            if (flash == null)
-                throw new ArgumentNullException(nameof(flash));
-            if (values == null)
-                throw new ArgumentNullException(nameof(values));
 
-            // calucate errors
-            var errors = error_fnc.ErrorCalculation(
-                Vector<double>.Build.DenseOfArray(flash.ResultSignals),
-                Vector<double>.Build.DenseOfArray(values));
-
-            var result = errors.AsArray();
-            if (result == null) result = errors.ToArray();
-
-            return result;
-        }
-
-#if NaN
+#if NaN_CHEK
         public static void NanTest(Layer layer)
         {
             NanTest(layer.Synapse);
