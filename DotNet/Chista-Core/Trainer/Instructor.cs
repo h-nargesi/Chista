@@ -118,10 +118,12 @@ namespace Photon.NeuralNetwork.Chista.Trainer
         {
             var buffer = new StringBuilder("[instructor]");
 
-            buffer.Append("data provider: ").Append(data_provider.PrintInfo())
+            buffer
+                .Append("\n").Append(data_provider.PrintInfo())
                 .Append("\n").Append("epoch: #").Append(Epoch);
             if (Epoch > 0) buffer.Append(" to ").Append(EpochMax);
-            buffer.Append(", stage: ").Append(Stage.ToString().ToLower())
+            buffer
+                .Append(", stage: ").Append(Stage.ToString().ToLower())
                 .Append(", offset: ").Append(Offset);
 
             lock (processes)

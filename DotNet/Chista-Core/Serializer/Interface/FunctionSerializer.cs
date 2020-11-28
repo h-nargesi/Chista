@@ -25,10 +25,7 @@ namespace Photon.NeuralNetwork.Chista.Serializer
         {
             FunctionType = typeof(T);
 
-            var attr = FunctionType.GetCustomAttribute<FunctionCode>();
-            if (attr == null)
-                throw new ArgumentException(FunctionType.Name,
-                    $"The type if serializable function ({FunctionType.Name}) is not valid.");
+            var attr = FunctionSerializerCore.GetAttribute(FunctionType);
 
             if (attr.code < 0x8000)
                 throw new ArgumentException(FunctionType.Name,
@@ -57,7 +54,8 @@ namespace Photon.NeuralNetwork.Chista.Serializer
         public abstract byte[] Serialize(T func);
         public byte[] Serialize(ISerializableFunction func)
         {
-            return Serialize(func);
+            if (func is T t_func) return Serialize(t_func);
+            else throw new ArgumentException(nameof(func), "Invalid function type");
         }
 
         public abstract T Restore(byte[] parameters);

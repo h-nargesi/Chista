@@ -13,23 +13,24 @@ namespace Photon.NeuralNetwork.Chista.Serializer
             ERROR_FUNCTION_SIGN = 0x10000,
             DATA_CONVERTOR_SIGN = 0x20000,
             REGULARIZATION_SIGN = 0x40000;
-        private readonly static Dictionary<Type, IFunctionSerializer> registered_functions_via_type =
-            new Dictionary<Type, IFunctionSerializer>();
         private readonly static Dictionary<int, IFunctionSerializer> registered_functions_via_code =
             new Dictionary<int, IFunctionSerializer>();
         public static void RegisterFunction<T>(FunctionSerializer<T> serializer)
             where T : ISerializableFunction
         {
-            if (registered_functions_via_type.ContainsKey(serializer.FunctionType))
-                throw new ArgumentException(nameof(serializer),
-                    $"Duplicated Type({serializer.FunctionType}). This type already is registred.");
-
             if (registered_functions_via_code.ContainsKey(serializer.Ucode))
                 throw new ArgumentException(nameof(serializer),
                     $"Duplicated Code({serializer.Code}, {serializer.Ucode}). This code is registred for {registered_functions_via_code[serializer.Ucode].Name}.");
 
-            registered_functions_via_type.Add(serializer.FunctionType, serializer);
             registered_functions_via_code.Add(serializer.Ucode, serializer);
+        }
+        public static FunctionCode GetAttribute(Type type)
+        {
+            var attr = type.GetCustomAttribute<FunctionCode>();
+            if (attr == null)
+                throw new ArgumentException(type.Name,
+                    $"The type of serializable function ({type.Name}) is not have 'FunctionCode' attribute.");
+            return attr;
         }
 
         private readonly FileStream stream;
@@ -56,10 +57,15 @@ namespace Photon.NeuralNetwork.Chista.Serializer
                     break;
 
                 default:
-                    if (registered_functions_via_type.ContainsKey(error_func.GetType()))
+                    var attr = GetAttribute(error_func.GetType());
+                    if (!registered_functions_via_code.ContainsKey(attr.code | ERROR_FUNCTION_SIGN))
                         throw new ArgumentException(
                             nameof(error_func), "this type of IErrorFunction is not registered.");
-                    Serialize(error_func, out parameters, out code);
+                    var serializer = registered_functions_via_code[attr.code | ERROR_FUNCTION_SIGN];
+                    code = serializer.Code;
+                    parameters = serializer.Serialize(error_func);
+                    if ((parameters?.Length ?? 0) != serializer.ParameterLength)
+                        throw new Exception("invalid parameters' length.");
                     break;
             }
 
@@ -94,10 +100,15 @@ namespace Photon.NeuralNetwork.Chista.Serializer
                         break;
 
                     default:
-                        if (registered_functions_via_type.ContainsKey(convertor.GetType()))
+                        var attr = GetAttribute(convertor.GetType());
+                        if (!registered_functions_via_code.ContainsKey(attr.code | DATA_CONVERTOR_SIGN))
                             throw new ArgumentException(
                                 nameof(convertor), "this type of IDataConvertor is not registered.");
-                        Serialize(convertor, out byte[] buffer, out code);
+                        var serializer = registered_functions_via_code[attr.code | DATA_CONVERTOR_SIGN];
+                        code = serializer.Code;
+                        var buffer = serializer.Serialize(convertor);
+                        if ((buffer?.Length ?? 0) != serializer.ParameterLength)
+                            throw new Exception("invalid parameters' length.");
                         parameters = new List<byte>();
                         if (buffer != null) parameters.AddRange(buffer);
                         break;
@@ -126,24 +137,20 @@ namespace Photon.NeuralNetwork.Chista.Serializer
                         parameters = null;
                         break;
                     default:
-                        if (registered_functions_via_type.ContainsKey(regularization.GetType()))
+                        var attr = GetAttribute(regularization.GetType());
+                        if (!registered_functions_via_code.ContainsKey(attr.code | REGULARIZATION_SIGN))
                             throw new ArgumentException(
                                 nameof(regularization), "this type of IRegularization is not registered.");
-                        Serialize(regularization, out parameters, out code);
+                        var serializer = registered_functions_via_code[attr.code | REGULARIZATION_SIGN];
+                        code = serializer.Code;
+                        parameters = serializer.Serialize(regularization);
+                        if ((parameters?.Length ?? 0) != serializer.ParameterLength)
+                            throw new Exception("invalid parameters' length.");
                         break;
                 }
 
             // serialaize type and parameters
             Serialize(code, parameters);
-        }
-        private void Serialize(ISerializableFunction func, out byte[] parameters, out ushort code)
-        {
-            var serializer = registered_functions_via_type[func.GetType()];
-
-            code = serializer.Code;
-            parameters = serializer.Serialize(func);
-            if ((parameters?.Length ?? 0) != serializer.ParameterLength)
-                throw new Exception("invalid parameters' length.");
         }
         private void Serialize(ushort code, byte[] parameters)
         {
@@ -169,10 +176,10 @@ namespace Photon.NeuralNetwork.Chista.Serializer
                     var buffer = RestorParameter(4);
                     return new Deprecated.ErrorStack(BitConverter.ToInt32(buffer, 0));
                 default:
-                    if (registered_functions_via_code.ContainsKey(code))
+                    if (!registered_functions_via_code.ContainsKey(code | ERROR_FUNCTION_SIGN))
                         throw new Exception(
                             $"this type of IErrorFunction ({code}) is not registered.");
-                    return (IErrorFunction)Restore(code);
+                    return (IErrorFunction)Restore(registered_functions_via_code[code | ERROR_FUNCTION_SIGN]);
             }
         }
         public IDataConvertor RestoreIDataConvertor()
@@ -195,10 +202,10 @@ namespace Photon.NeuralNetwork.Chista.Serializer
                         BitConverter.ToDouble(buffer, 8));
 
                 default:
-                    if (registered_functions_via_code.ContainsKey(code))
+                    if (!registered_functions_via_code.ContainsKey(code | DATA_CONVERTOR_SIGN))
                         throw new Exception(
                             $"This type of IDataConvertor ({code}) is not registered.");
-                    return (IDataConvertor)Restore(code);
+                    return (IDataConvertor)Restore(registered_functions_via_code[code | DATA_CONVERTOR_SIGN]);
             }
         }
         public IRegularization RestoreIRegularization()
@@ -211,20 +218,14 @@ namespace Photon.NeuralNetwork.Chista.Serializer
                 case 1: return new RegularizationL1();
                 case 2: return new RegularizationL2();
                 default:
-                    if (registered_functions_via_code.ContainsKey(code))
+                    if (!registered_functions_via_code.ContainsKey(code | REGULARIZATION_SIGN))
                         throw new Exception(
                             $"this type of IRegularization ({code}) is not registered.");
-                    return (IRegularization)Restore(code);
+                    return (IRegularization)Restore(registered_functions_via_code[code | REGULARIZATION_SIGN]);
             }
         }
-        private ISerializableFunction Restore(ushort code)
+        private ISerializableFunction Restore(IFunctionSerializer serializer)
         {
-            if (registered_functions_via_code.ContainsKey(code))
-                throw new Exception(
-                    $"this type of IErrorFunction ({code}) is not registered.");
-            var ucode = code | ERROR_FUNCTION_SIGN;
-            var serializer = registered_functions_via_code[ucode];
-
             byte[] buffer;
             if (serializer.ParameterLength < 1) buffer = null;
             else buffer = RestorParameter(serializer.ParameterLength);
