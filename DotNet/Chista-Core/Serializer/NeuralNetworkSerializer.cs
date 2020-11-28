@@ -41,7 +41,7 @@ namespace Photon.NeuralNetwork.Chista.Serializer
             LayerSerializer.Serialize(stream, image.layers);
 
             // functions serializer
-            var function = new FunctionSerializer(stream);
+            var function = new FunctionSerializerCore(stream);
 
             // 3: serialize error function
             function.Serialize(image.error_fnc);
@@ -103,7 +103,7 @@ namespace Photon.NeuralNetwork.Chista.Serializer
             var layers = LayerSerializer.Restore(stream);
 
             // functions serializer
-            var function = new FunctionSerializer(stream);
+            var function = new FunctionSerializerCore(stream);
 
             // 3: read error function
             var error = function.RestoreIErrorFunction();
@@ -125,7 +125,7 @@ namespace Photon.NeuralNetwork.Chista.Serializer
             var layers = LayerSerializer.Restore(stream);
 
             // functions serializer
-            var function = new FunctionSerializer(stream);
+            var function = new FunctionSerializerCore(stream);
 
             // 3: read error function
             var error = function.RestoreIErrorFunction();

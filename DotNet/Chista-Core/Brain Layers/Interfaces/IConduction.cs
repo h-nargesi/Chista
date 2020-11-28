@@ -1,9 +1,10 @@
 using System;
 using MathNet.Numerics.LinearAlgebra;
+using Photon.NeuralNetwork.Chista.Serializer;
 
 namespace Photon.NeuralNetwork.Chista.Implement
 {
-    public interface IConduction
+    public interface IConduction : ISerializableFunction
     {
         int ExtraCount { get; }
         Vector<double> Conduct(Vector<double> signal);
