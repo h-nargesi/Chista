@@ -16,11 +16,16 @@ namespace Photon.NeuralNetwork.Chista.Trainer
                 throw new ArgumentNullException(nameof(brain), "Instructor.Progress: brain is null");
             history = new History();
         }
-        private TrainProcess(Brain brain, History history)
+        public TrainProcess(ProgressInfo state)
         {
-            Brain = brain ??
-                throw new ArgumentNullException(nameof(brain), "Instructor.Progress: brain is null");
-            this.history = history;
+            if (state == null)
+                throw new ArgumentNullException(nameof(state), "The state is null.");
+
+            Brain = new Brain(state.current_image);
+            history = History.Restore(state.accuracy_chain, state.best_image);
+            record_count = state.record_count;
+            total_accuracy = state.current_total_accruacy;
+            OutOfLine = state.out_of_line;
         }
 
         public Brain Brain { get; }
@@ -56,26 +61,19 @@ namespace Photon.NeuralNetwork.Chista.Trainer
             get { return history.BestBrainInfo.Accuracy; }
         }
 
-        public ProgressState Info()
+        public ProgressInfo ProgressInfo()
         {
-            return new ProgressState(Brain.Image(), record_count, total_accuracy,
+            return new ProgressInfo(Brain.Image(), record_count, total_accuracy,
                 history.AccuracyChain(), history.BestBrainInfo?.image, OutOfLine);
         }
-        public static TrainProcess RestoreInfo(ProgressState state)
+
+        public override string ToString()
         {
-            if (state == null)
-                throw new ArgumentNullException(nameof(state), "The state is null.");
-
-            var progress = new TrainProcess(
-                new Brain(state.current_image),
-                History.Restore(state.accuracy_chain, state.best_image))
-            {
-                record_count = state.record_count,
-                total_accuracy = state.current_total_accruacy,
-                OutOfLine = state.out_of_line
-            };
-
-            return progress;
+            return $"accuracy: {CurrentAccuracy}, (flash:{LastPredict})";
+        }
+        public string PrintInfo()
+        {
+            return $"{Brain.PrintInfo()}\ncurrent accuracy: {CurrentAccuracy}";
         }
     }
 }

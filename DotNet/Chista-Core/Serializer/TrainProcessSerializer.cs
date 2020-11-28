@@ -59,7 +59,7 @@ namespace Photon.NeuralNetwork.Chista.Serializer
             foreach (var iprc in instructor.Processes)
                 if (iprc is TrainProcess prc)
                 {
-                    var state = prc.Info();
+                    var state = prc.ProgressInfo();
 
                     buffer = BitConverter.GetBytes(state.record_count); // 4-bytes
                     stream.Write(buffer, 0, buffer.Length);
@@ -109,7 +109,7 @@ namespace Photon.NeuralNetwork.Chista.Serializer
             }
         }
 
-        public static ProcessInfo Restore(string path)
+        public static InstructorProcessInfo Restore(string path)
         {
             if (path == null)
                 throw new ArgumentNullException(nameof(path));
@@ -127,7 +127,7 @@ namespace Photon.NeuralNetwork.Chista.Serializer
             // restore file
             return Restore(stream);
         }
-        public static ProcessInfo Restore(FileStream stream)
+        public static InstructorProcessInfo Restore(FileStream stream)
         {
             if (stream == null)
                 throw new ArgumentNullException(nameof(stream), "The writer stream is not defined");
@@ -149,9 +149,9 @@ namespace Photon.NeuralNetwork.Chista.Serializer
                 _ => throw new Exception("This version of nnp list is not supported"),
             };
         }
-        private static ProcessInfo RestoreLastVersion(FileStream stream)
+        private static InstructorProcessInfo RestoreLastVersion(FileStream stream)
         {
-            var process_info = new ProcessInfo();
+            var process_info = new InstructorProcessInfo();
             var buffer = new byte[8];
 
             stream.Read(buffer, 0, 1);
@@ -195,8 +195,8 @@ namespace Photon.NeuralNetwork.Chista.Serializer
                 if (buffer[0] == 0) best_image = null;
                 else best_image = NeuralNetworkSerializer.Restore(stream);
 
-                process_info.Processes.Add(TrainProcess.RestoreInfo(
-                    new ProgressState(
+                process_info.Processes.Add(new TrainProcess(
+                    new ProgressInfo(
                         current_image, record_count, current_total_accruacy,
                         accuracy_chain, best_image, is_out_of_line)));
             }

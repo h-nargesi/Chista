@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -78,24 +77,30 @@ namespace Photon.NeuralNetwork.Chista.Trainer
         {
             lock (processes) processes.RemoveAt(index);
         }
-        public void LoadProgress(ProcessInfo process_info)
+        public void LoadProgress(InstructorProcessInfo process_info)
         {
             if (!Stopped) throw new Exception("The process is not stoped.");
 
             if (process_info == null)
                 throw new ArgumentNullException(nameof(process_info));
 
-            processes.Clear();
-            if (process_info.Processes != null)
-                foreach (var iprg in process_info.Processes)
-                    if (iprg is TrainProcess prg) processes.Add(prg);
-                    else throw new Exception("Invalid progress type.");
+            lock (processes)
+            {
+                processes.Clear();
+                if (process_info.Processes != null)
+                    foreach (var iprg in process_info.Processes)
+                        if (iprg is TrainProcess prg) processes.Add(prg);
+                        else throw new Exception("Invalid progress type.");
+            }
 
-            out_of_line.Clear();
-            if (process_info.OutOfLine != null)
-                foreach (var ibrain in process_info.OutOfLine)
-                    if (ibrain is BrainInfo brn) out_of_line.Add(brn);
-                    else throw new Exception("Invalid brain-info type.");
+            lock (out_of_line)
+            {
+                out_of_line.Clear();
+                if (process_info.OutOfLine != null)
+                    foreach (var ibrain in process_info.OutOfLine)
+                        if (ibrain is BrainInfo brn) out_of_line.Add(brn);
+                        else throw new Exception("Invalid brain-info type.");
+            }
 
             Epoch = process_info.Epoch;
             Stage = process_info.Stage;
@@ -103,11 +108,11 @@ namespace Photon.NeuralNetwork.Chista.Trainer
         }
         public void AddBrainInfo(BrainInfo brain)
         {
-            lock (processes) out_of_line.Add(brain);
+            lock (out_of_line) out_of_line.Add(brain);
         }
         public void RemoveBrainInfo(int index)
         {
-            lock (processes) out_of_line.RemoveAt(index);
+            lock (out_of_line) out_of_line.RemoveAt(index);
         }
         #endregion
 
@@ -244,9 +249,10 @@ namespace Photon.NeuralNetwork.Chista.Trainer
                                                 if (!processes[p].OutOfLine) p++;
                                                 else
                                                 {
-                                                    out_of_line.Add(new BrainInfo(
-                                                        processes[p].BestBrainImage,
-                                                        processes[p].BestBrainAccuracy));
+                                                    lock (out_of_line)
+                                                        out_of_line.Add(new BrainInfo(
+                                                            processes[p].BestBrainImage,
+                                                            processes[p].BestBrainAccuracy));
                                                     processes.RemoveAt(p);
                                                 }
                                             // reset processs accuarcy info for next round
@@ -324,8 +330,8 @@ namespace Photon.NeuralNetwork.Chista.Trainer
                             // reporting vriables
                             var start_time = DateTime.Now.Ticks;
 
-                            lock (processes)
-                                Parallel.ForEach(OutOfLine, (process, state, index) =>
+                            lock (out_of_line)
+                                Parallel.ForEach(out_of_line, (process, state, index) =>
                                 {
                                     // test this neural network with evaluation data
                                     var flash = process.Brain.Test(record.data);
@@ -372,7 +378,6 @@ namespace Photon.NeuralNetwork.Chista.Trainer
         }
         #endregion
 
-
         public static string GetDurationString(long duration, int level = 4)
         {
             var result = new StringBuilder();
@@ -401,5 +406,6 @@ namespace Photon.NeuralNetwork.Chista.Trainer
             // return
             return result.Remove(result.Length - 1, 1).ToString();
         }
+
     }
 }
