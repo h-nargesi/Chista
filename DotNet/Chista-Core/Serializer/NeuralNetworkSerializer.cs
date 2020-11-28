@@ -119,27 +119,6 @@ namespace Photon.NeuralNetwork.Chista.Serializer
 
             return new NeuralNetworkImage(layers, error, input_convertor, output_convertor, regularization);
         }
-        private static NeuralNetworkImage RestoreVer2(FileStream stream)
-        {
-            // 2: read all layers
-            var layers = LayerSerializer.Restore(stream);
-
-            // functions serializer
-            var function = new FunctionSerializerCore(stream);
-
-            // 3: read error function
-            var error = function.RestoreIErrorFunction();
-
-            // regularization not supported in this version
-
-            // 4: read data intput convertor
-            var input_convertor = function.RestoreIDataConvertor();
-
-            // 5: read data output convertor
-            var output_convertor = function.RestoreIDataConvertor();
-
-            return new NeuralNetworkImage(layers, error, input_convertor, output_convertor, null);
-        }
 
         public static int SIGNATURE_LENGTH => FILE_TYPE_SIGNATURE.Length;
         private readonly static byte[] FILE_TYPE_SIGNATURE;

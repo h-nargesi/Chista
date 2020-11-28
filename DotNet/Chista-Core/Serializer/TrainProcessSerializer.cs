@@ -12,7 +12,11 @@ namespace Photon.NeuralNetwork.Chista.Serializer
         public const byte SECTION_TYPE = 2;
         public const ushort VERSION = 6;
 
-        public static void Serialize(string path, Instructor instructor)
+        public static void Serialize(string path, Instructor instructor, string extra)
+        {
+            Serialize(path, instructor, extra == null || extra.Length < 1 ? null : Encoding.UTF8.GetBytes(extra));
+        }
+        public static void Serialize(string path, Instructor instructor, byte[] extra = null)
         {
             if (path == null)
                 throw new ArgumentNullException(nameof(path));
@@ -25,7 +29,12 @@ namespace Photon.NeuralNetwork.Chista.Serializer
             // serialize file signature
             stream.Write(FILE_TYPE_SIGNATURE);
 
+            // serialize main data
             Serialize(stream, instructor);
+
+            // serialize developer extra data
+            if (extra != null && extra.Length > 0)
+                stream.Write(extra);
         }
         public static void Serialize(FileStream stream, Instructor instructor)
         {
@@ -111,6 +120,17 @@ namespace Photon.NeuralNetwork.Chista.Serializer
 
         public static InstructorProcessInfo Restore(string path)
         {
+            return Restore(path, out byte[] _);
+        }
+        public static InstructorProcessInfo Restore(string path, out string extra)
+        {
+            var prc = Restore(path, out byte[] extra_bytes);
+            if (extra_bytes == null) extra = null;
+            else extra = Encoding.UTF8.GetString(extra_bytes);
+            return prc;
+        }
+        public static InstructorProcessInfo Restore(string path, out byte[] extra)
+        {
             if (path == null)
                 throw new ArgumentNullException(nameof(path));
 
@@ -125,7 +145,16 @@ namespace Photon.NeuralNetwork.Chista.Serializer
                 throw new Exception("Invalid nnp file signature");
 
             // restore file
-            return Restore(stream);
+            var prc = Restore(stream);
+
+            if (stream.Position < stream.Length)
+            {
+                extra = new byte[stream.Length - stream.Position];
+                stream.Read(extra, 0, extra.Length);
+            }
+            else extra = null;
+
+            return prc;
         }
         public static InstructorProcessInfo Restore(FileStream stream)
         {

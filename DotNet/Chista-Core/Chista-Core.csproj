@@ -5,7 +5,7 @@
     <RootNamespace>Photon.NeuralNetwork.Chista</RootNamespace>
     <AssemblyName>chista.core</AssemblyName>
     <LangVersion>8.0</LangVersion>
-    <Version>2.8.93</Version>
+    <Version>2.9.94</Version>
     <Authors>Hamed Nargesi</Authors>
   </PropertyGroup>
 

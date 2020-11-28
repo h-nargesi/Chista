@@ -130,7 +130,7 @@ namespace Photon.NeuralNetwork.Chista.Trainer
                 if (processes.Count > 0)
                 {
                     int best_index = -1, current_index = -1; double best_accuracy = -1;
-                    foreach(var prc in processes)
+                    foreach (var prc in processes)
                     {
                         current_index++;
                         if (best_accuracy >= prc.BestBrainAccuracy) continue;
@@ -428,31 +428,37 @@ namespace Photon.NeuralNetwork.Chista.Trainer
 
         public static string GetDurationString(long duration, int level = 4)
         {
+            var result = GetDurationStringEnded(duration, level);
+            if (result.Length < 1) return result.ToString();
+            else return result.Remove(result.Length - 1, 1).ToString();
+        }
+        private static StringBuilder GetDurationStringEnded(long duration, int level)
+        {
             var result = new StringBuilder();
             // 100-nanosecond
             if (level >= 6) result.Insert(0, ",").Insert(0, duration % 10000);
             // millisecond
             duration /= 10000;
-            if (duration == 0) return result.Remove(result.Length - 1, 1).ToString();
+            if (duration == 0) return result;
             if (level >= 5) result.Insert(0, "ms,").Insert(0, duration % 1000);
             // second
             duration /= 1000;
-            if (duration == 0) return result.Remove(result.Length - 1, 1).ToString();
+            if (duration == 0) return result;
             if (level >= 4) result.Insert(0, "s,").Insert(0, duration % 60);
             // miniute
             duration /= 60;
-            if (duration == 0) return result.Remove(result.Length - 1, 1).ToString();
+            if (duration == 0) return result;
             if (level >= 3) result.Insert(0, "m,").Insert(0, duration % 60);
             // hour
             duration /= 60;
-            if (duration == 0) return result.Remove(result.Length - 1, 1).ToString();
+            if (duration == 0) return result;
             if (level >= 2) result.Insert(0, "h,").Insert(0, duration % 24);
             // days
             duration /= 24;
-            if (duration == 0) return result.Remove(result.Length - 1, 1).ToString();
+            if (duration == 0) return result;
             if (level >= 1) result.Insert(0, "d,").Insert(0, duration);
             // return
-            return result.Remove(result.Length - 1, 1).ToString();
+            return result;
         }
 
     }
