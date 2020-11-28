@@ -7,7 +7,7 @@ using Photon.NeuralNetwork.Chista.Trainer.Delegates;
 
 namespace Photon.NeuralNetwork.Chista.Trainer
 {
-    public abstract class Instructor
+    public abstract class Instructor : INeuralNetworkInformation
     {
         public Instructor(IDataProvider data_provider)
         {
@@ -113,6 +113,52 @@ namespace Photon.NeuralNetwork.Chista.Trainer
         public void RemoveBrainInfo(int index)
         {
             lock (out_of_line) out_of_line.RemoveAt(index);
+        }
+        public string PrintInfo()
+        {
+            var buffer = new StringBuilder("[instructor]");
+
+            buffer.Append("data provider: ").Append(data_provider.PrintInfo())
+                .Append("\n").Append("epoch: #").Append(Epoch);
+            if (Epoch > 0) buffer.Append(" to ").Append(EpochMax);
+            buffer.Append(", stage: ").Append(Stage.ToString().ToLower())
+                .Append(", offset: ").Append(Offset);
+
+            lock (processes)
+                if (processes.Count > 0)
+                {
+                    int best_index = -1, current_index = -1; double best_accuracy = -1;
+                    foreach(var prc in processes)
+                    {
+                        current_index++;
+                        if (best_accuracy >= prc.BestBrainAccuracy) continue;
+
+                        best_accuracy = prc.BestBrainAccuracy;
+                        best_index = current_index;
+                    }
+
+                    buffer.Append("\n#best process\n")
+                        .Append(processes[best_index].PrintInfo());
+                }
+
+            lock (out_of_line)
+                if (out_of_line.Count > 0)
+                {
+                    int best_index = -1, current_index = -1; double best_accuracy = -1;
+                    foreach (var prc in out_of_line)
+                    {
+                        current_index++;
+                        if (best_accuracy >= prc.Accuracy) continue;
+
+                        best_accuracy = prc.Accuracy;
+                        best_index = current_index;
+                    }
+
+                    buffer.Append("\n#best out_of_line\n")
+                        .Append(out_of_line[best_index].PrintInfo());
+                }
+
+            return buffer.ToString();
         }
         #endregion
 

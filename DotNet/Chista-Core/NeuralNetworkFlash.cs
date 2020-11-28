@@ -4,7 +4,7 @@ using MathNet.Numerics.LinearAlgebra;
 
 namespace Photon.NeuralNetwork.Chista
 {
-    public class NeuralNetworkFlash
+    public class NeuralNetworkFlash : INeuralNetworkInformation
     {
         internal readonly Vector<double>[] SignalsSum;
         internal readonly Vector<double>[] InputSignals;
@@ -50,6 +50,16 @@ namespace Photon.NeuralNetwork.Chista
                 if (ResultSignals == null || ResultSignals.Length < 1) return 0;
                 else return TotalError / ResultSignals.Length;
             }
+        }
+
+        public override string ToString()
+        {
+            return @$"average:{ErrorAverage}, total:{TotalError}, count:{ResultSignals.Length}";
+        }
+        public string PrintInfo()
+        {
+            return @$"[neural network flash]
+error average: {ErrorAverage}, totla error: {TotalError}, count: {ResultSignals.Length}";
         }
     }
 }

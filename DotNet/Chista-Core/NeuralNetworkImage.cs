@@ -7,7 +7,7 @@ using Photon.NeuralNetwork.Chista.Implement;
 
 namespace Photon.NeuralNetwork.Chista
 {
-    public class NeuralNetworkImage
+    public class NeuralNetworkImage : INeuralNetworkInformation
     {
         public readonly Layer[] layers;
         public readonly IErrorFunction error_fnc;
@@ -64,9 +64,24 @@ namespace Photon.NeuralNetwork.Chista
                 throw new ArgumentException(nameof(layers), messages);
         }
 
-        public string PrintInfo()
+        public override string ToString()
         {
             var buffer = new StringBuilder();
+            if (layers != null)
+            {
+                buffer.Append("layers:").Append(layers.Length);
+                if (layers.Length > 0)
+                {
+                    buffer.Append(layers[0].Synapse.ColumnCount);
+                    foreach (var l in layers)
+                        buffer.Append("x").Append(l.Synapse.RowCount);
+                }
+            }
+            return buffer.ToString();
+        }
+        public string PrintInfo()
+        {
+            var buffer = new StringBuilder("[neural network image]");
 
             if (input_convertor != null)
                 buffer.Append("\n")
