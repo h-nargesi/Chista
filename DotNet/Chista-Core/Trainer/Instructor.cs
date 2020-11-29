@@ -356,11 +356,12 @@ namespace Photon.NeuralNetwork.Chista.Trainer
                     record_geter = data_provider.PrepareNextData(Offset, Stage);
 
                     // prepare brains
-                    foreach (var bri in OutOfLine)
-                        bri.InitBrain();
+                    lock (out_of_line)
+                        foreach (var bri in out_of_line)
+                            bri.InitBrain();
 
                     // training loop
-                    while (!Canceling && Epoch < EpochMax)
+                    while (!Canceling && out_of_line.Count > 0 && Epoch < EpochMax)
                     {
                         // current record
                         record_geter.Wait();
