@@ -4,15 +4,15 @@ using System.Text;
 
 namespace Photon.NeuralNetwork.Chista.Trainer
 {
-    class ProgressState
+    public class ProgressInfo
     {
-        public readonly NeuralNetworkImage best_image, current_image;
-        public readonly double[] accuracy_chain;
-        public readonly int record_count;
-        public readonly double current_total_accruacy;
-        public readonly bool out_of_line;
+        public NeuralNetworkImage best_image, current_image;
+        public double[] accuracy_chain;
+        public int record_count;
+        public double current_total_accruacy;
+        public bool out_of_line;
 
-        public ProgressState(
+        public ProgressInfo(
             NeuralNetworkImage current_image,
             int record_count,
             double current_total_accruacy,
@@ -26,6 +26,11 @@ namespace Photon.NeuralNetwork.Chista.Trainer
             this.accuracy_chain = accuracy_chain;
             this.best_image = best_image;
             this.out_of_line = out_of_line;
+        }
+
+        public ITrainProcess TrainProcess()
+        {
+            return new TrainProcess(this);
         }
     }
 }

@@ -7,9 +7,9 @@ using Photon.NeuralNetwork.Chista.Implement;
 
 namespace Photon.NeuralNetwork.Chista
 {
-    public class Brain
+    public class Brain : INeuralNetworkInformation
     {
-        private const int lock_time_out = 1000;
+        private const int lock_time_out = -1;
         private readonly ReaderWriterLock locker = new ReaderWriterLock();
 
         private readonly Layer[] layers;
@@ -24,8 +24,7 @@ namespace Photon.NeuralNetwork.Chista
         public Brain(NeuralNetworkImage image)
         {
             if (image == null)
-                throw new ArgumentNullException(nameof(image),
-                    "The nn-image is undefined.");
+                throw new ArgumentNullException(nameof(image), "The nn-image is undefined.");
 
             NeuralNetworkImage.CheckImageError(image.layers, image.error_fnc);
 
@@ -298,25 +297,8 @@ namespace Photon.NeuralNetwork.Chista
             // calculate total error of network result
             flash.TotalError = delta.PointwiseAbs().Sum();
         }
-        public double[] Errors(NeuralNetworkFlash flash, double[] values)
-        {
-            if (flash == null)
-                throw new ArgumentNullException(nameof(flash));
-            if (values == null)
-                throw new ArgumentNullException(nameof(values));
 
-            // calucate errors
-            var errors = error_fnc.ErrorCalculation(
-                Vector<double>.Build.DenseOfArray(flash.ResultSignals),
-                Vector<double>.Build.DenseOfArray(values));
-
-            var result = errors.AsArray();
-            if (result == null) result = errors.ToArray();
-
-            return result;
-        }
-
-#if NaN
+#if NaN_CHEK
         public static void NanTest(Layer layer)
         {
             NanTest(layer.Synapse);
@@ -336,5 +318,57 @@ namespace Photon.NeuralNetwork.Chista
                     throw new Exception("NaN value");
         }
 #endif
+
+        public override string ToString()
+        {
+            var buffer = new StringBuilder();
+            if (layers != null)
+            {
+                buffer.Append("layers:").Append(layers.Length);
+                if (layers.Length > 0)
+                {
+                    buffer.Append(layers[0].Synapse.ColumnCount);
+                    foreach (var l in layers)
+                        buffer.Append("x").Append(l.Synapse.RowCount);
+                }
+            }
+            return buffer.ToString();
+        }
+        public string PrintInfo()
+        {
+            var buffer = new StringBuilder("[brain]");
+
+            if (in_cvrt != null)
+                buffer.Append("\n")
+                    .Append("input data convertor: ").Append(in_cvrt.ToString());
+
+            if (layers != null)
+            {
+                buffer.Append("\n").Append("layers: ").Append(layers.Length);
+                if (layers.Length > 0)
+                {
+                    buffer.Append("\n\t")
+                        .Append("input: ").Append(layers[0].Synapse.ColumnCount).Append(" node(s)");
+                    foreach (var l in layers)
+                        buffer.Append("\n\t").Append("layer: ")
+                            .Append(l.Synapse.RowCount).Append(" node(s)")
+                            .Append(" func=").Append(l.Conduction.ToString());
+                }
+            }
+
+            if (out_cvrt != null)
+                buffer.Append("\n")
+                    .Append("output data convertor: ").Append(out_cvrt.ToString());
+
+            if (error_fnc != null)
+                buffer.Append("\n")
+                    .Append("error function: ").Append(error_fnc.ToString());
+
+            if (regularization != null)
+                buffer.Append("\n")
+                    .Append("regularization: ").Append(regularization.ToString());
+
+            return buffer.ToString();
+        }
     }
 }

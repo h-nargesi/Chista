@@ -12,7 +12,11 @@ namespace Photon.NeuralNetwork.Chista.Serializer
         public const byte SECTION_TYPE = 2;
         public const ushort VERSION = 6;
 
-        public static void Serialize(string path, Instructor instructor)
+        public static void Serialize(string path, Instructor instructor, string extra)
+        {
+            Serialize(path, instructor, extra == null || extra.Length < 1 ? null : Encoding.UTF8.GetBytes(extra));
+        }
+        public static void Serialize(string path, Instructor instructor, byte[] extra = null)
         {
             if (path == null)
                 throw new ArgumentNullException(nameof(path));
@@ -25,7 +29,12 @@ namespace Photon.NeuralNetwork.Chista.Serializer
             // serialize file signature
             stream.Write(FILE_TYPE_SIGNATURE);
 
+            // serialize main data
             Serialize(stream, instructor);
+
+            // serialize developer extra data
+            if (extra != null && extra.Length > 0)
+                stream.Write(extra);
         }
         public static void Serialize(FileStream stream, Instructor instructor)
         {
@@ -59,7 +68,7 @@ namespace Photon.NeuralNetwork.Chista.Serializer
             foreach (var iprc in instructor.Processes)
                 if (iprc is TrainProcess prc)
                 {
-                    var state = prc.Info();
+                    var state = prc.ProgressInfo();
 
                     buffer = BitConverter.GetBytes(state.record_count); // 4-bytes
                     stream.Write(buffer, 0, buffer.Length);
@@ -109,7 +118,18 @@ namespace Photon.NeuralNetwork.Chista.Serializer
             }
         }
 
-        public static ProcessInfo Restore(string path)
+        public static InstructorProcessInfo Restore(string path)
+        {
+            return Restore(path, out byte[] _);
+        }
+        public static InstructorProcessInfo Restore(string path, out string extra)
+        {
+            var prc = Restore(path, out byte[] extra_bytes);
+            if (extra_bytes == null) extra = null;
+            else extra = Encoding.UTF8.GetString(extra_bytes);
+            return prc;
+        }
+        public static InstructorProcessInfo Restore(string path, out byte[] extra)
         {
             if (path == null)
                 throw new ArgumentNullException(nameof(path));
@@ -125,9 +145,18 @@ namespace Photon.NeuralNetwork.Chista.Serializer
                 throw new Exception("Invalid nnp file signature");
 
             // restore file
-            return Restore(stream);
+            var prc = Restore(stream);
+
+            if (stream.Position < stream.Length)
+            {
+                extra = new byte[stream.Length - stream.Position];
+                stream.Read(extra, 0, extra.Length);
+            }
+            else extra = null;
+
+            return prc;
         }
-        public static ProcessInfo Restore(FileStream stream)
+        public static InstructorProcessInfo Restore(FileStream stream)
         {
             if (stream == null)
                 throw new ArgumentNullException(nameof(stream), "The writer stream is not defined");
@@ -149,9 +178,9 @@ namespace Photon.NeuralNetwork.Chista.Serializer
                 _ => throw new Exception("This version of nnp list is not supported"),
             };
         }
-        private static ProcessInfo RestoreLastVersion(FileStream stream)
+        private static InstructorProcessInfo RestoreLastVersion(FileStream stream)
         {
-            var process_info = new ProcessInfo();
+            var process_info = new InstructorProcessInfo();
             var buffer = new byte[8];
 
             stream.Read(buffer, 0, 1);
@@ -195,8 +224,8 @@ namespace Photon.NeuralNetwork.Chista.Serializer
                 if (buffer[0] == 0) best_image = null;
                 else best_image = NeuralNetworkSerializer.Restore(stream);
 
-                process_info.Processes.Add(TrainProcess.RestoreInfo(
-                    new ProgressState(
+                process_info.Processes.Add(new TrainProcess(
+                    new ProgressInfo(
                         current_image, record_count, current_total_accruacy,
                         accuracy_chain, best_image, is_out_of_line)));
             }

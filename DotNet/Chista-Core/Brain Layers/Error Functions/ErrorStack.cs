@@ -2,7 +2,7 @@ using System;
 using MathNet.Numerics.LinearAlgebra;
 using Photon.NeuralNetwork.Chista.Implement;
 
-namespace Photon.NeuralNetwork.Chista
+namespace Photon.NeuralNetwork.Chista.Deprecated
 {
     public class ErrorStack : IErrorFunction
     {
@@ -33,7 +33,7 @@ namespace Photon.NeuralNetwork.Chista
 
         public override string ToString()
         {
-            return "ErrorStack";
+            return "ErrorStack ** deprecated";
         }
     }
 }

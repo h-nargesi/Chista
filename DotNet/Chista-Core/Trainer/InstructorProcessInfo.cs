@@ -4,7 +4,7 @@ using System.Text;
 
 namespace Photon.NeuralNetwork.Chista.Trainer
 {
-    public class ProcessInfo
+    public class InstructorProcessInfo
     {
         public TraingingStages Stage { get; set; } = TraingingStages.Training;
         public uint Offset { get; set; }

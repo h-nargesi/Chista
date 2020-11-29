@@ -4,7 +4,7 @@ using System.Text;
 
 namespace Photon.NeuralNetwork.Chista.Trainer
 {
-    public class BrainInfo
+    public class BrainInfo : INeuralNetworkInformation
     {
         public BrainInfo(NeuralNetworkImage image, double accuracy)
         {
@@ -32,6 +32,11 @@ namespace Photon.NeuralNetwork.Chista.Trainer
             total_accuracy += predict.Accuracy;
             Accuracy = total_accuracy / record_count;
             LastPrediction = predict;
+        }
+
+        public string PrintInfo()
+        {
+            return $"{image.PrintInfo()}\naccuracy: {Accuracy}";
         }
     }
 }

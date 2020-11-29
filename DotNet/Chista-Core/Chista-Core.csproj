@@ -5,12 +5,12 @@
     <RootNamespace>Photon.NeuralNetwork.Chista</RootNamespace>
     <AssemblyName>chista.core</AssemblyName>
     <LangVersion>8.0</LangVersion>
-    <Version>2.8.92</Version>
+    <Version>2.9.94</Version>
     <Authors>Hamed Nargesi</Authors>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
-    <DefineConstants>TRACE;DEBUG;NaN</DefineConstants>
+    <DefineConstants>TRACE;DEBUG;NaN_CHEK</DefineConstants>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">

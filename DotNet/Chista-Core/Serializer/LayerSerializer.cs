@@ -47,7 +47,7 @@ namespace Photon.NeuralNetwork.Chista.Serializer
 
                     // serialize conduction function
                     buffer = BitConverter.GetBytes(
-                        FunctionSerializer.EnCodeIConduction(layers[l].Conduction)); // 2-bytes
+                        FunctionSerializerCore.EnCodeIConduction(layers[l].Conduction)); // 2-bytes
                     stream.Write(buffer, 0, buffer.Length);
                 }
         }
@@ -101,7 +101,7 @@ namespace Photon.NeuralNetwork.Chista.Serializer
                     }
 
                     stream.Read(buffer, 0, 2);
-                    conduction = FunctionSerializer.DecodeIConduction(
+                    conduction = FunctionSerializerCore.DecodeIConduction(
                         BitConverter.ToUInt16(buffer, 0));
                 }
 

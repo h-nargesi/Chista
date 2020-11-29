@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -8,7 +7,7 @@ using Photon.NeuralNetwork.Chista.Trainer.Delegates;
 
 namespace Photon.NeuralNetwork.Chista.Trainer
 {
-    public abstract class Instructor
+    public abstract class Instructor : INeuralNetworkInformation
     {
         public Instructor(IDataProvider data_provider)
         {
@@ -78,24 +77,30 @@ namespace Photon.NeuralNetwork.Chista.Trainer
         {
             lock (processes) processes.RemoveAt(index);
         }
-        public void LoadProgress(ProcessInfo process_info)
+        public void LoadProgress(InstructorProcessInfo process_info)
         {
             if (!Stopped) throw new Exception("The process is not stoped.");
 
             if (process_info == null)
                 throw new ArgumentNullException(nameof(process_info));
 
-            processes.Clear();
-            if (process_info.Processes != null)
-                foreach (var iprg in process_info.Processes)
-                    if (iprg is TrainProcess prg) processes.Add(prg);
-                    else throw new Exception("Invalid progress type.");
+            lock (processes)
+            {
+                processes.Clear();
+                if (process_info.Processes != null)
+                    foreach (var iprg in process_info.Processes)
+                        if (iprg is TrainProcess prg) processes.Add(prg);
+                        else throw new Exception("Invalid progress type.");
+            }
 
-            out_of_line.Clear();
-            if (process_info.OutOfLine != null)
-                foreach (var ibrain in process_info.OutOfLine)
-                    if (ibrain is BrainInfo brn) out_of_line.Add(brn);
-                    else throw new Exception("Invalid brain-info type.");
+            lock (out_of_line)
+            {
+                out_of_line.Clear();
+                if (process_info.OutOfLine != null)
+                    foreach (var ibrain in process_info.OutOfLine)
+                        if (ibrain is BrainInfo brn) out_of_line.Add(brn);
+                        else throw new Exception("Invalid brain-info type.");
+            }
 
             Epoch = process_info.Epoch;
             Stage = process_info.Stage;
@@ -103,11 +108,59 @@ namespace Photon.NeuralNetwork.Chista.Trainer
         }
         public void AddBrainInfo(BrainInfo brain)
         {
-            lock (processes) out_of_line.Add(brain);
+            lock (out_of_line) out_of_line.Add(brain);
         }
         public void RemoveBrainInfo(int index)
         {
-            lock (processes) out_of_line.RemoveAt(index);
+            lock (out_of_line) out_of_line.RemoveAt(index);
+        }
+        public string PrintInfo()
+        {
+            var buffer = new StringBuilder("[instructor]");
+
+            buffer
+                .Append("\n").Append(data_provider.PrintInfo())
+                .Append("\n").Append("epoch: #").Append(Epoch);
+            if (Epoch > 0) buffer.Append(" to ").Append(EpochMax);
+            buffer
+                .Append(", stage: ").Append(Stage.ToString().ToLower())
+                .Append(", offset: ").Append(Offset);
+
+            lock (processes)
+                if (processes.Count > 0)
+                {
+                    int best_index = -1, current_index = -1; double best_accuracy = -1;
+                    foreach (var prc in processes)
+                    {
+                        current_index++;
+                        if (best_accuracy >= prc.BestBrainAccuracy) continue;
+
+                        best_accuracy = prc.BestBrainAccuracy;
+                        best_index = current_index;
+                    }
+
+                    buffer.Append("\n#best process\n")
+                        .Append(processes[best_index].PrintInfo());
+                }
+
+            lock (out_of_line)
+                if (out_of_line.Count > 0)
+                {
+                    int best_index = -1, current_index = -1; double best_accuracy = -1;
+                    foreach (var prc in out_of_line)
+                    {
+                        current_index++;
+                        if (best_accuracy >= prc.Accuracy) continue;
+
+                        best_accuracy = prc.Accuracy;
+                        best_index = current_index;
+                    }
+
+                    buffer.Append("\n#best out_of_line\n")
+                        .Append(out_of_line[best_index].PrintInfo());
+                }
+
+            return buffer.ToString();
         }
         #endregion
 
@@ -117,6 +170,7 @@ namespace Photon.NeuralNetwork.Chista.Trainer
         protected abstract void ReflectFinished(Record record, long duration, int running_code);
         protected abstract void OnError(Exception ex);
         protected abstract void OnStopped();
+        protected abstract void OnFinished();
         #endregion
 
 
@@ -135,7 +189,7 @@ namespace Photon.NeuralNetwork.Chista.Trainer
 
                 try
                 {
-                    process_locker.AcquireWriterLock(4000);
+                    process_locker.AcquireWriterLock(-1);
                     Stopped = false;
 
                     // initialize data-provider
@@ -243,9 +297,10 @@ namespace Photon.NeuralNetwork.Chista.Trainer
                                                 if (!processes[p].OutOfLine) p++;
                                                 else
                                                 {
-                                                    out_of_line.Add(new BrainInfo(
-                                                        processes[p].BestBrainImage,
-                                                        processes[p].BestBrainAccuracy));
+                                                    lock (out_of_line)
+                                                        out_of_line.Add(new BrainInfo(
+                                                            processes[p].BestBrainImage,
+                                                            processes[p].BestBrainAccuracy));
                                                     processes.RemoveAt(p);
                                                 }
                                             // reset processs accuarcy info for next round
@@ -264,12 +319,15 @@ namespace Photon.NeuralNetwork.Chista.Trainer
 
                     // being sure that record geter is finished
                     _ = record_geter.Result;
+
+                    OnFinished();
                 }
                 catch (Exception ex) { OnError(ex); }
                 finally
                 {
                     Stopped = true;
-                    process_locker.ReleaseWriterLock();
+                    if (process_locker.IsWriterLockHeld)
+                        process_locker.ReleaseWriterLock();
                     data_provider.Dispose();
                 }
             });
@@ -283,7 +341,7 @@ namespace Photon.NeuralNetwork.Chista.Trainer
 
                 try
                 {
-                    process_locker.AcquireWriterLock(4000);
+                    process_locker.AcquireWriterLock(-1);
                     Stopped = false;
 
                     var EpochMax = Math.Max(this.EpochMax, 1U);
@@ -320,8 +378,8 @@ namespace Photon.NeuralNetwork.Chista.Trainer
                             // reporting vriables
                             var start_time = DateTime.Now.Ticks;
 
-                            lock (processes)
-                                Parallel.ForEach(OutOfLine, (process, state, index) =>
+                            lock (out_of_line)
+                                Parallel.ForEach(out_of_line, (process, state, index) =>
                                 {
                                     // test this neural network with evaluation data
                                     var flash = process.Brain.Test(record.data);
@@ -333,7 +391,7 @@ namespace Photon.NeuralNetwork.Chista.Trainer
 
                             if (Canceling) break;
                             // call event
-                            ReflectFinished(record, DateTime.Now.Ticks - start_time, 
+                            ReflectFinished(record, DateTime.Now.Ticks - start_time,
                                 (int)TraingingStages.Evaluation);
                         }
 
@@ -351,7 +409,8 @@ namespace Photon.NeuralNetwork.Chista.Trainer
                 finally
                 {
                     Stopped = true;
-                    process_locker.ReleaseWriterLock();
+                    if (process_locker.IsWriterLockHeld)
+                        process_locker.ReleaseWriterLock();
                     data_provider.Dispose();
                 }
             });
@@ -361,40 +420,46 @@ namespace Photon.NeuralNetwork.Chista.Trainer
             Canceling = true;
 
             // wait for training task finish
-            process_locker.AcquireWriterLock(10000);
+            process_locker.AcquireWriterLock(-1);
             try { OnStopped(); }
             finally { process_locker.ReleaseWriterLock(); }
         }
         #endregion
 
-
         public static string GetDurationString(long duration, int level = 4)
+        {
+            var result = GetDurationStringEnded(duration, level);
+            if (result.Length < 1) return result.ToString();
+            else return result.Remove(result.Length - 1, 1).ToString();
+        }
+        private static StringBuilder GetDurationStringEnded(long duration, int level)
         {
             var result = new StringBuilder();
             // 100-nanosecond
             if (level >= 6) result.Insert(0, ",").Insert(0, duration % 10000);
             // millisecond
             duration /= 10000;
-            if (duration == 0) return result.Remove(result.Length - 1, 1).ToString();
+            if (duration == 0) return result;
             if (level >= 5) result.Insert(0, "ms,").Insert(0, duration % 1000);
             // second
             duration /= 1000;
-            if (duration == 0) return result.Remove(result.Length - 1, 1).ToString();
+            if (duration == 0) return result;
             if (level >= 4) result.Insert(0, "s,").Insert(0, duration % 60);
             // miniute
             duration /= 60;
-            if (duration == 0) return result.Remove(result.Length - 1, 1).ToString();
+            if (duration == 0) return result;
             if (level >= 3) result.Insert(0, "m,").Insert(0, duration % 60);
             // hour
             duration /= 60;
-            if (duration == 0) return result.Remove(result.Length - 1, 1).ToString();
+            if (duration == 0) return result;
             if (level >= 2) result.Insert(0, "h,").Insert(0, duration % 24);
             // days
             duration /= 24;
-            if (duration == 0) return result.Remove(result.Length - 1, 1).ToString();
+            if (duration == 0) return result;
             if (level >= 1) result.Insert(0, "d,").Insert(0, duration);
             // return
-            return result.Remove(result.Length - 1, 1).ToString();
+            return result;
         }
+
     }
 }
