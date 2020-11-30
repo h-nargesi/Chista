@@ -46,7 +46,6 @@ namespace Photon.NeuralNetwork.Chista.Trainer
 
             record_count = 0;
             total_accuracy = 0;
-            Accuracy = 0;
 
             return is_out_of_line;
         }

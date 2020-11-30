@@ -200,6 +200,12 @@ namespace Photon.NeuralNetwork.Chista.Trainer
                     // initialize by developer
                     OnInitialize();
 
+                    if (Stage == TrainingStages.Evaluation && OutOfLine.Count < 1)
+                    {
+                        Offset = 0;
+                        Stage = TrainingStages.Training;
+                    }
+
                     // fetch next record
                     record_geter = data_provider.PrepareNextData(Offset, Stage);
 
@@ -428,7 +434,7 @@ namespace Photon.NeuralNetwork.Chista.Trainer
             Canceling = true;
 
             // wait for training task finish
-            process_locker.AcquireWriterLock(-1);
+            process_locker.AcquireWriterLock(10000);
             try { OnStopped(); }
             finally { process_locker.ReleaseWriterLock(); }
         }
@@ -438,7 +444,16 @@ namespace Photon.NeuralNetwork.Chista.Trainer
         public static string GetDurationString(long duration, int level = 4)
         {
             var result = GetDurationStringEnded(duration, level);
-            if (result.Length < 1) return result.ToString();
+            if (result.Length < 1)
+                return level switch
+                {
+                    1 => "less than 1d",
+                    2 => "less than 1h",
+                    3 => "less than 1m",
+                    4 => "less than 1s",
+                    5 => "less than 1ms",
+                    _ => "immediate",
+                };
             else return result.Remove(result.Length - 1, 1).ToString();
         }
         private static StringBuilder GetDurationStringEnded(long duration, int level)

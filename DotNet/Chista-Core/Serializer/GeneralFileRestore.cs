@@ -26,13 +26,13 @@ namespace Photon.NeuralNetwork.Chista.Serializer
             using var stream = File.OpenRead(path);
 
             // read file signature
-            var buffer = new byte[TrainProcessSerializer.SIGNATURE_LENGTH];
+            var buffer = new byte[LearningProcessSerializer.SIGNATURE_LENGTH];
             stream.Read(buffer, 0, buffer.Length);
             var file_type_diignature = Encoding.ASCII.GetString(buffer);
 
-            if (file_type_diignature == TrainProcessSerializer.FILE_TYPE_SIGNATURE_STRING)
+            if (file_type_diignature == LearningProcessSerializer.FILE_TYPE_SIGNATURE_STRING)
             {
-                var prc = TrainProcessSerializer.Restore(stream);
+                var prc = LearningProcessSerializer.Restore(stream);
                 extra = ReadExtra(stream);
                 return prc;
             }

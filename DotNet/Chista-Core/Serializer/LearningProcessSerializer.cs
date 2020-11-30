@@ -6,7 +6,7 @@ using Photon.NeuralNetwork.Chista.Trainer;
 
 namespace Photon.NeuralNetwork.Chista.Serializer
 {
-    public static class TrainProcessSerializer
+    public static class LearningProcessSerializer
     {
         public const string FILE_TYPE_SIGNATURE_STRING = "Opertat Training Process File";
         public const byte SECTION_TYPE = 2;
@@ -313,7 +313,7 @@ namespace Photon.NeuralNetwork.Chista.Serializer
 
         public static int SIGNATURE_LENGTH => FILE_TYPE_SIGNATURE.Length;
         private readonly static byte[] FILE_TYPE_SIGNATURE;
-        static TrainProcessSerializer()
+        static LearningProcessSerializer()
         {
             FILE_TYPE_SIGNATURE = Encoding.ASCII.GetBytes(FILE_TYPE_SIGNATURE_STRING);
         }
