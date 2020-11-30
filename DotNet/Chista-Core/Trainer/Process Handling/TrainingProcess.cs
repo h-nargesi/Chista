@@ -4,76 +4,75 @@ using System.Text;
 
 namespace Photon.NeuralNetwork.Chista.Trainer
 {
-    class TrainProcess : ITrainProcess
+    class TrainingProcess : ITrainingProcess
     {
-        private readonly History history;
+        private readonly TrainingProcessHistory history;
         private int record_count;
         private double total_accuracy;
 
-        public TrainProcess(Brain brain)
+        public TrainingProcess(Brain brain)
         {
             Brain = brain ??
                 throw new ArgumentNullException(nameof(brain), "Instructor.Progress: brain is null");
-            history = new History();
+            history = new TrainingProcessHistory();
         }
-        public TrainProcess(ProgressInfo state)
+        public TrainingProcess(NetProcessInfo state)
         {
             if (state == null)
                 throw new ArgumentNullException(nameof(state), "The state is null.");
 
             Brain = new Brain(state.current_image);
-            history = History.Restore(state.accuracy_chain, state.best_image);
+            history = TrainingProcessHistory.Restore(state.accuracy_chain, state.best_image);
             record_count = state.record_count;
             total_accuracy = state.current_total_accruacy;
-            OutOfLine = state.out_of_line;
         }
 
         public Brain Brain { get; }
-        public double CurrentAccuracy { get; private set; }
-        public NeuralNetworkFlash LastPredict { get; private set; }
-        public bool OutOfLine { get; private set; }
+        public double Accuracy { get; private set; }
+        public NeuralNetworkFlash LastPrediction { get; private set; }
 
         public void ChangeSatate(NeuralNetworkFlash predict)
         {
             record_count++;
             total_accuracy += predict.Accuracy;
-            CurrentAccuracy = total_accuracy / record_count;
-            LastPredict = predict;
+            Accuracy = total_accuracy / record_count;
+            LastPrediction = predict;
         }
         public bool FinishCurrentState(bool is_training)
         {
-            if (!is_training)
-                OutOfLine = history.AddProgress(this);
+            bool is_out_of_line;
+            if (is_training) is_out_of_line = false;
+            else is_out_of_line = history.AddProgress(this);
 
             record_count = 0;
             total_accuracy = 0;
-            CurrentAccuracy = 0;
+            Accuracy = 0;
 
-            return !is_training && OutOfLine;
+            return is_out_of_line;
         }
 
         public NeuralNetworkImage BestBrainImage
         {
-            get { return history.BestBrainInfo?.image; }
+            get { return history.BestBrainInfo?.Image; }
         }
         public double BestBrainAccuracy
         {
             get { return history.BestBrainInfo?.Accuracy ?? 0; }
         }
 
-        public ProgressInfo ProgressInfo()
+        public NetProcessInfo ProcessInfo()
         {
-            return new ProgressInfo(Brain.Image(), record_count, total_accuracy,
-                history.AccuracyChain(), history.BestBrainInfo?.image, OutOfLine);
+            return new NetProcessInfo(Brain.Image(), record_count, total_accuracy,
+                history.AccuracyChain(), history.BestBrainInfo?.Image);
         }
 
         public override string ToString()
         {
-            return $"accuracy: {CurrentAccuracy}, (flash:{LastPredict})";
+            return $"accuracy: {Accuracy}, (flash:{LastPrediction})";
         }
         public string PrintInfo()
         {
-            return $"{Brain.PrintInfo()}\ncurrent accuracy: {CurrentAccuracy}";
+            return $"{Brain.PrintInfo()}\ncurrent accuracy: {Accuracy}";
         }
     }
 }

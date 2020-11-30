@@ -4,9 +4,9 @@ using System.Text;
 
 namespace Photon.NeuralNetwork.Chista.Trainer
 {
-    class History
+    class TrainingProcessHistory
     {
-        public History()
+        public TrainingProcessHistory()
         {
             history = new LinkedList<BrainInfo>();
         }
@@ -17,17 +17,17 @@ namespace Photon.NeuralNetwork.Chista.Trainer
             get { return history.First?.Value; }
         }
 
-        public bool AddProgress(ITrainProcess progress)
+        public bool AddProgress(ITrainingProcess progress)
         {
-            if (history.Count < 1 || progress.CurrentAccuracy > history.First.Value.Accuracy)
+            if (history.Count < 1 || progress.Accuracy > history.First.Value.Accuracy)
             {
                 history.Clear();
-                history.AddLast(new BrainInfo(progress.Brain.Image(), progress.CurrentAccuracy));
+                history.AddLast(new BrainInfo(progress.Brain.Image(), progress.Accuracy));
                 return false;
             }
             else
             {
-                history.AddLast(new BrainInfo(null, progress.CurrentAccuracy));
+                history.AddLast(new BrainInfo(null, progress.Accuracy));
 
                 double prv_accuracy = 0;
                 int descenting_count = 0;
@@ -51,12 +51,12 @@ namespace Photon.NeuralNetwork.Chista.Trainer
             foreach (var info in history) chain[c++] = info.Accuracy;
             return chain;
         }
-        public static History Restore(double[] chain, NeuralNetworkImage best_image)
+        public static TrainingProcessHistory Restore(double[] chain, NeuralNetworkImage best_image)
         {
             if (chain == null)
                 throw new ArgumentNullException(nameof(chain), "History.Restore: accuracy chain is null");
 
-            var history = new History();
+            var history = new TrainingProcessHistory();
 
             if (chain.Length > 0)
             {

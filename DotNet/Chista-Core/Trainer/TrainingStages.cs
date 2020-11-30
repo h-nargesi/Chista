@@ -4,7 +4,7 @@ using System.Text;
 
 namespace Photon.NeuralNetwork.Chista.Trainer
 {
-    public enum TraingingStages : byte
+    public enum TrainingStages : byte
     {
         Training = 1, Validation, Evaluation
     }

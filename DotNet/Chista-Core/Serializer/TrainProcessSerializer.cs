@@ -10,7 +10,7 @@ namespace Photon.NeuralNetwork.Chista.Serializer
     {
         public const string FILE_TYPE_SIGNATURE_STRING = "Opertat Training Process File";
         public const byte SECTION_TYPE = 2;
-        public const ushort VERSION = 6;
+        public const ushort VERSION = 7;
 
         public static void Serialize(string path, Instructor instructor, string extra)
         {
@@ -66,17 +66,14 @@ namespace Photon.NeuralNetwork.Chista.Serializer
 
             // serialize process
             foreach (var iprc in instructor.Processes)
-                if (iprc is TrainProcess prc)
+                if (iprc is TrainingProcess prc)
                 {
-                    var state = prc.ProgressInfo();
+                    var state = prc.ProcessInfo();
 
                     buffer = BitConverter.GetBytes(state.record_count); // 4-bytes
                     stream.Write(buffer, 0, buffer.Length);
 
                     buffer = BitConverter.GetBytes(state.current_total_accruacy); // 8-bytes
-                    stream.Write(buffer, 0, buffer.Length);
-
-                    buffer = new byte[1] { (byte)(state.out_of_line ? 1 : 0) }; // 1-bytes
                     stream.Write(buffer, 0, buffer.Length);
 
                     buffer = BitConverter.GetBytes(state.accuracy_chain.Length); // 4-bytes
@@ -114,22 +111,22 @@ namespace Photon.NeuralNetwork.Chista.Serializer
                 buffer = BitConverter.GetBytes(bi.Accuracy); // 8-bytes
                 stream.Write(buffer, 0, buffer.Length);
 
-                NeuralNetworkSerializer.Serialize(stream, bi.image);
+                NeuralNetworkSerializer.Serialize(stream, bi.Image);
             }
         }
 
-        public static InstructorProcessInfo Restore(string path)
+        public static LearningProcessInfo Restore(string path)
         {
             return Restore(path, out byte[] _);
         }
-        public static InstructorProcessInfo Restore(string path, out string extra)
+        public static LearningProcessInfo Restore(string path, out string extra)
         {
             var prc = Restore(path, out byte[] extra_bytes);
             if (extra_bytes == null) extra = null;
             else extra = Encoding.UTF8.GetString(extra_bytes);
             return prc;
         }
-        public static InstructorProcessInfo Restore(string path, out byte[] extra)
+        public static LearningProcessInfo Restore(string path, out byte[] extra)
         {
             if (path == null)
                 throw new ArgumentNullException(nameof(path));
@@ -156,7 +153,7 @@ namespace Photon.NeuralNetwork.Chista.Serializer
 
             return prc;
         }
-        public static InstructorProcessInfo Restore(FileStream stream)
+        public static LearningProcessInfo Restore(FileStream stream)
         {
             if (stream == null)
                 throw new ArgumentNullException(nameof(stream), "The writer stream is not defined");
@@ -174,17 +171,18 @@ namespace Photon.NeuralNetwork.Chista.Serializer
 
             return version switch
             {
+                6 => RestoreLastVersion6(stream),
                 VERSION => RestoreLastVersion(stream),
                 _ => throw new Exception("This version of nnp list is not supported"),
             };
         }
-        private static InstructorProcessInfo RestoreLastVersion(FileStream stream)
+        private static LearningProcessInfo RestoreLastVersion(FileStream stream)
         {
-            var process_info = new InstructorProcessInfo();
+            var process_info = new LearningProcessInfo();
             var buffer = new byte[8];
 
             stream.Read(buffer, 0, 1);
-            process_info.Stage = (TraingingStages)buffer[0];
+            process_info.Stage = (TrainingStages)buffer[0];
 
             stream.Read(buffer, 0, 4);
             process_info.Offset = BitConverter.ToUInt32(buffer, 0);
@@ -194,7 +192,7 @@ namespace Photon.NeuralNetwork.Chista.Serializer
 
             stream.Read(buffer, 0, 4);
             var count = BitConverter.ToInt32(buffer, 0);
-            process_info.Processes = new List<ITrainProcess>(count);
+            process_info.Processes = new List<ITrainingProcess>(count);
 
             for (var i = 0; i < count; i++)
             {
@@ -203,9 +201,6 @@ namespace Photon.NeuralNetwork.Chista.Serializer
 
                 stream.Read(buffer, 0, 8);
                 var current_total_accruacy = BitConverter.ToDouble(buffer, 0);
-
-                stream.Read(buffer, 0, 1);
-                var is_out_of_line = buffer[0] != 0;
 
                 stream.Read(buffer, 0, 4);
                 var chain_count = BitConverter.ToInt32(buffer, 0);
@@ -224,15 +219,83 @@ namespace Photon.NeuralNetwork.Chista.Serializer
                 if (buffer[0] == 0) best_image = null;
                 else best_image = NeuralNetworkSerializer.Restore(stream);
 
-                process_info.Processes.Add(new TrainProcess(
-                    new ProgressInfo(
+                process_info.Processes.Add(new TrainingProcess(
+                    new NetProcessInfo(
                         current_image, record_count, current_total_accruacy,
-                        accuracy_chain, best_image, is_out_of_line)));
+                        accuracy_chain, best_image)));
             }
 
             stream.Read(buffer, 0, 4);
             count = BitConverter.ToInt32(buffer, 0);
-            process_info.OutOfLine = new List<BrainInfo>(count);
+            process_info.OutOfLine = new List<IBrainInfo>(count);
+
+            for (var i = 0; i < count; i++)
+            {
+                stream.Read(buffer, 0, 8);
+                var accruacy = BitConverter.ToDouble(buffer, 0);
+
+                var image = NeuralNetworkSerializer.Restore(stream);
+
+                process_info.OutOfLine.Add(new BrainInfo(image, accruacy));
+            }
+
+            return process_info;
+        }
+        private static LearningProcessInfo RestoreLastVersion6(FileStream stream)
+        {
+            var process_info = new LearningProcessInfo();
+            var buffer = new byte[8];
+
+            stream.Read(buffer, 0, 1);
+            process_info.Stage = (TrainingStages)buffer[0];
+
+            stream.Read(buffer, 0, 4);
+            process_info.Offset = BitConverter.ToUInt32(buffer, 0);
+
+            stream.Read(buffer, 0, 4);
+            process_info.Epoch = BitConverter.ToUInt32(buffer, 0);
+
+            stream.Read(buffer, 0, 4);
+            var count = BitConverter.ToInt32(buffer, 0);
+            process_info.Processes = new List<ITrainingProcess>(count);
+
+            for (var i = 0; i < count; i++)
+            {
+                stream.Read(buffer, 0, 4);
+                var record_count = BitConverter.ToInt32(buffer, 0);
+
+                stream.Read(buffer, 0, 8);
+                var current_total_accruacy = BitConverter.ToDouble(buffer, 0);
+
+                // out of line is deprecated
+                stream.Read(buffer, 0, 1);
+
+                stream.Read(buffer, 0, 4);
+                var chain_count = BitConverter.ToInt32(buffer, 0);
+                var accuracy_chain = new double[chain_count];
+
+                for (var c = 0; c < chain_count; c++)
+                {
+                    stream.Read(buffer, 0, 8);
+                    accuracy_chain[c] = BitConverter.ToDouble(buffer, 0);
+                }
+
+                var current_image = NeuralNetworkSerializer.Restore(stream);
+
+                NeuralNetworkImage best_image;
+                stream.Read(buffer, 0, 1);
+                if (buffer[0] == 0) best_image = null;
+                else best_image = NeuralNetworkSerializer.Restore(stream);
+
+                process_info.Processes.Add(new TrainingProcess(
+                    new NetProcessInfo(
+                        current_image, record_count, current_total_accruacy,
+                        accuracy_chain, best_image)));
+            }
+
+            stream.Read(buffer, 0, 4);
+            count = BitConverter.ToInt32(buffer, 0);
+            process_info.OutOfLine = new List<IBrainInfo>(count);
 
             for (var i = 0; i < count; i++)
             {

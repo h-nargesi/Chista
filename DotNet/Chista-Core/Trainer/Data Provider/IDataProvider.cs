@@ -12,7 +12,7 @@ namespace Photon.NeuralNetwork.Chista.Trainer
         public uint ValidationCount { get; }
         public uint EvaluationCount { get; }
         public void Initialize();
-        public Task<Record> PrepareNextData(uint progress, TraingingStages stage);
+        public Task<Record> PrepareNextData(uint progress, TrainingStages stage);
         public string PrintInfo();
     }
 }
