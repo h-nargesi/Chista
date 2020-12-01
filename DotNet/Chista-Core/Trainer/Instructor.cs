@@ -200,10 +200,20 @@ namespace Photon.NeuralNetwork.Chista.Trainer
                     // initialize by developer
                     OnInitialize();
 
-                    if (Stage == TrainingStages.Evaluation && OutOfLine.Count < 1)
+                    // check new out-of-line process
+                    if (Stage == TrainingStages.Evaluation)
                     {
+                        var offset = Offset;
                         Offset = 0;
                         Stage = TrainingStages.Training;
+                        lock (out_of_line)
+                            foreach (var bri in out_of_line)
+                                if (bri.Accuracy < 0)
+                                {
+                                    Offset = offset;
+                                    Stage = TrainingStages.Evaluation;
+                                    break;
+                                }
                     }
 
                     // fetch next record

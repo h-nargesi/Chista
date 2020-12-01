@@ -99,14 +99,7 @@ namespace Photon.NeuralNetwork.Chista
             locker.AcquireReaderLock(lock_time_out);
             try
             {
-                // dropout
-                /*if (DropoutFactor > 0)
-                {
-                    var nodes = new HashSet<int>();
-                    var last = layers[^1];
-                    foreach (var layer in layers)
-                        layer.Droupout(last == layer ? 0 : DropoutFactor, ref nodes);
-                }*/
+                // don't use dropout
 
                 // forward-propagation
                 ForwardPropagation(flash, ref signals);
@@ -152,14 +145,7 @@ namespace Photon.NeuralNetwork.Chista
             }
             finally
             {
-                // ralease dropout
-                /*if (DropoutFactor > 0)
-                {
-                    LearningFactor = lr;
-                    var nodes = new HashSet<int>();
-                    foreach (var layer in layers)
-                        layer.DroupoutRelease(ref nodes);
-                }*/
+                // the dropout is not used
 
                 // release lock
                 locker.ReleaseWriterLock();
