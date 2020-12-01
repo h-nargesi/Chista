@@ -58,7 +58,7 @@ namespace Photon.NeuralNetwork.Chista.Serializer
                     parameters = new List<byte>();
                     parameters.AddRange(BitConverter.GetBytes(e.IndexCount));
                     break;
-/*
+
                 case Classification e:
                     code = 3;
                     parameters = new List<byte>();
@@ -71,7 +71,7 @@ namespace Photon.NeuralNetwork.Chista.Serializer
                     parameters.AddRange(BitConverter.GetBytes(e.MinAccept));
                     parameters.AddRange(BitConverter.GetBytes(e.MaxReject));
                     break;
-*/
+
                 default:
                     var attr = GetAttribute(error_func.GetType());
                     if (!registered_functions_via_code.ContainsKey(attr.code | ERROR_FUNCTION_SIGN))
@@ -220,12 +220,12 @@ namespace Photon.NeuralNetwork.Chista.Serializer
                 case 2:
                     buffer = RestorParameter(4);
                     return new Deprecated.ErrorStack(BitConverter.ToInt32(buffer, 0));
-                /*case 3:
+                case 3:
                     buffer = RestorParameter(8);
                     return new Classification(BitConverter.ToDouble(buffer, 0));
                 case 4:
                     buffer = RestorParameter(16);
-                    return new Tagging(BitConverter.ToInt32(buffer, 0), BitConverter.ToInt32(buffer, 8));*/
+                    return new Tagging(BitConverter.ToInt32(buffer, 0), BitConverter.ToInt32(buffer, 8));
                 default:
                     if (!registered_functions_via_code.ContainsKey(code | ERROR_FUNCTION_SIGN))
                         throw new Exception(
