@@ -13,13 +13,13 @@ namespace Photon.NeuralNetwork.Chista
         }
         public Vector<double> Conduct(NeuralNetworkFlash flash, int layer)
         {
-            flash[EXP][layer] = flash.SignalsSum[layer].PointwiseMinimum(700).PointwiseExp();
-            flash[EXP_1][layer] = flash[EXP][layer] + 1;
-            return flash[EXP_1][layer].PointwiseLog();
+            flash.SignalsExtra[EXP][layer] = flash.SignalsSum[layer].PointwiseMinimum(700).PointwiseExp();
+            flash.SignalsExtra[EXP_1][layer] = flash.SignalsExtra[EXP][layer] + 1;
+            return flash.SignalsExtra[EXP_1][layer].PointwiseLog();
         }
         public Vector<double> ConductDerivative(NeuralNetworkFlash flash, int layer)
         {
-            return flash[EXP][layer] / flash[EXP_1][layer];
+            return flash.SignalsExtra[EXP][layer] / flash.SignalsExtra[EXP_1][layer];
         }
 
         private const int EXP = 0;

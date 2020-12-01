@@ -99,19 +99,19 @@ namespace Photon.NeuralNetwork.Chista.Trainer
             Stage = process_info.Stage;
             Offset = process_info.Offset;
         }
-        public void AddProgress(Brain brain)
+        public void AddProgress(Brain brain, IAccurateGauge accurate)
         {
             if (brain == null) throw new ArgumentNullException(nameof(brain));
-            lock (processes) processes.Add(new TrainingProcess(brain));
+            lock (processes) processes.Add(new TrainingProcess(brain, accurate));
         }
         public void RemoveProgress(int index)
         {
             lock (processes) processes.RemoveAt(index);
         }
-        public void AddBrainInfo(Brain brain)
+        public void AddBrainInfo(Brain brain, IAccurateGauge accurate)
         {
             if (brain == null) throw new ArgumentNullException(nameof(brain));
-            lock (out_of_line) out_of_line.Add(new BrainInfo(brain.Image(), 0));
+            lock (out_of_line) out_of_line.Add(new BrainInfo(brain.Image(), accurate));
         }
         public void RemoveBrainInfo(int index)
         {
@@ -305,7 +305,7 @@ namespace Photon.NeuralNetwork.Chista.Trainer
                                                 {
                                                     we_have_new_out_of_line = true;
                                                     var brain_info = new BrainInfo(
-                                                        processes[p].BestBrainImage, -1);
+                                                        processes[p].BestBrainImage, processes[p].Accurate);
                                                     brain_info.InitBrain();
                                                     lock (out_of_line) out_of_line.Add(brain_info);
                                                     processes.RemoveAt(p);

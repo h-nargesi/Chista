@@ -84,7 +84,7 @@ namespace Photon.NeuralNetwork.Chista
             // return result
             return signals.ToArray();
         }
-        public NeuralNetworkFlash Test(double[] inputs)
+        public NeuralNetworkFlash Test(double[] inputs, double[] values = null)
         {
             if (inputs == null)
                 throw new ArgumentNullException(nameof(inputs));
@@ -110,6 +110,8 @@ namespace Photon.NeuralNetwork.Chista
             if (out_cvrt != null) signals = out_cvrt.Normalize(signals);
             // set result
             flash.ResultSignals = signals.ToArray();
+            // check error
+            if (values != null) FillTotalError(flash, values);
 
             return flash;
         }
@@ -134,7 +136,7 @@ namespace Photon.NeuralNetwork.Chista
             {
                 // TODO: question => does it can be out of locker block?
                 // calculate total error of network result
-                flash.TotalError = delta.PointwiseAbs().Sum();
+                flash.Finilize(delta);
                 // check if is not any error then do not train the network
                 if (flash.TotalError != 0) return;
 
@@ -186,9 +188,9 @@ namespace Photon.NeuralNetwork.Chista
 
                 // calculate error
                 delta = error_fnc.ErrorCalculation(flash.InputSignals[^1], delta);
-                
+
                 // calculate total error of network result
-                flash.TotalError = delta.PointwiseAbs().Sum();
+                flash.Finilize(delta);
                 // check if is not any error then do not train the network
                 if (flash.TotalError != 0)
                 {
@@ -281,7 +283,7 @@ namespace Photon.NeuralNetwork.Chista
             // calculate error
             delta = error_fnc.ErrorCalculation(flash.InputSignals[^1], delta);
             // calculate total error of network result
-            flash.TotalError = delta.PointwiseAbs().Sum();
+            flash.Finilize(delta);
         }
 
 #if NaN_CHEK

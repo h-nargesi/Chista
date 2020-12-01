@@ -4,6 +4,7 @@ using System.IO;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using Photon.NeuralNetwork.Chista.Implement;
+using Photon.NeuralNetwork.Chista.Trainer;
 
 namespace Photon.NeuralNetwork.Chista.Serializer
 {
@@ -12,7 +13,8 @@ namespace Photon.NeuralNetwork.Chista.Serializer
         public const int
             ERROR_FUNCTION_SIGN = 0x10000,
             DATA_CONVERTOR_SIGN = 0x20000,
-            REGULARIZATION_SIGN = 0x40000;
+            REGULARIZATION_SIGN = 0x40000,
+            ACCURATE_GAUGE_SIGN = 0x80000;
         private readonly static Dictionary<int, IFunctionSerializer> registered_functions_via_code =
             new Dictionary<int, IFunctionSerializer>();
         public static void RegisterFunction<T>(FunctionSerializer<T> serializer)
@@ -43,7 +45,7 @@ namespace Photon.NeuralNetwork.Chista.Serializer
         public void Serialize(IErrorFunction error_func)
         {
             ushort code;
-            byte[] parameters;
+            List<byte> parameters;
             switch (error_func)
             {
                 case Errorest _:
@@ -53,9 +55,23 @@ namespace Photon.NeuralNetwork.Chista.Serializer
 
                 case Deprecated.ErrorStack e:
                     code = 2;
-                    parameters = BitConverter.GetBytes(e.IndexCount);
+                    parameters = new List<byte>();
+                    parameters.AddRange(BitConverter.GetBytes(e.IndexCount));
+                    break;
+/*
+                case Classification e:
+                    code = 3;
+                    parameters = new List<byte>();
+                    parameters.AddRange(BitConverter.GetBytes(e.MinAccept));
                     break;
 
+                case Tagging e:
+                    code = 4;
+                    parameters = new List<byte>();
+                    parameters.AddRange(BitConverter.GetBytes(e.MinAccept));
+                    parameters.AddRange(BitConverter.GetBytes(e.MaxReject));
+                    break;
+*/
                 default:
                     var attr = GetAttribute(error_func.GetType());
                     if (!registered_functions_via_code.ContainsKey(attr.code | ERROR_FUNCTION_SIGN))
@@ -63,14 +79,15 @@ namespace Photon.NeuralNetwork.Chista.Serializer
                             nameof(error_func), "this type of IErrorFunction is not registered.");
                     var serializer = registered_functions_via_code[attr.code | ERROR_FUNCTION_SIGN];
                     code = serializer.Code;
-                    parameters = serializer.Serialize(error_func);
-                    if ((parameters?.Length ?? 0) != serializer.ParameterLength)
+                    parameters = new List<byte>();
+                    parameters.AddRange(serializer.Serialize(error_func) ?? new byte[0]);
+                    if (parameters.Count != serializer.ParameterLength)
                         throw new Exception("invalid parameters' length.");
                     break;
             }
 
             // serialaize type and parameters
-            Serialize(code, parameters);
+            Serialize(code, parameters?.ToArray());
         }
         public void Serialize(IDataConvertor convertor)
         {
@@ -152,6 +169,33 @@ namespace Photon.NeuralNetwork.Chista.Serializer
             // serialaize type and parameters
             Serialize(code, parameters);
         }
+        public void Serialize(IAccurateGauge accurate)
+        {
+            ushort code;
+            byte[] parameters;
+            
+            switch (accurate)
+                {
+                    case AccurateGauge _:
+                        code = 1;
+                        parameters = null;
+                        break;
+                    default:
+                        var attr = GetAttribute(accurate.GetType());
+                        if (!registered_functions_via_code.ContainsKey(attr.code | ACCURATE_GAUGE_SIGN))
+                            throw new ArgumentException(
+                                nameof(accurate), "this type of IAccurateGauge is not registered.");
+                        var serializer = registered_functions_via_code[attr.code | ACCURATE_GAUGE_SIGN];
+                        code = serializer.Code;
+                        parameters = serializer.Serialize(accurate);
+                        if ((parameters?.Length ?? 0) != serializer.ParameterLength)
+                            throw new Exception("invalid parameters' length.");
+                        break;
+                }
+
+            // serialaize type and parameters
+            Serialize(code, parameters);
+        }
         private void Serialize(ushort code, byte[] parameters)
         {
             // serialaize type
@@ -168,13 +212,20 @@ namespace Photon.NeuralNetwork.Chista.Serializer
         public IErrorFunction RestoreIErrorFunction()
         {
             var code = RestorFunctionType();
+            byte[] buffer;
 
             switch (code)
             {
                 case 1: return new Errorest();
                 case 2:
-                    var buffer = RestorParameter(4);
+                    buffer = RestorParameter(4);
                     return new Deprecated.ErrorStack(BitConverter.ToInt32(buffer, 0));
+                /*case 3:
+                    buffer = RestorParameter(8);
+                    return new Classification(BitConverter.ToDouble(buffer, 0));
+                case 4:
+                    buffer = RestorParameter(16);
+                    return new Tagging(BitConverter.ToInt32(buffer, 0), BitConverter.ToInt32(buffer, 8));*/
                 default:
                     if (!registered_functions_via_code.ContainsKey(code | ERROR_FUNCTION_SIGN))
                         throw new Exception(
@@ -222,6 +273,21 @@ namespace Photon.NeuralNetwork.Chista.Serializer
                         throw new Exception(
                             $"this type of IRegularization ({code}) is not registered.");
                     return (IRegularization)Restore(registered_functions_via_code[code | REGULARIZATION_SIGN]);
+            }
+        }
+        public IAccurateGauge RestoreIAccurateGauge()
+        {
+            var code = RestorFunctionType();
+
+            switch (code)
+            {
+                case 0: return null;
+                case 1: return new AccurateGauge();
+                default:
+                    if (!registered_functions_via_code.ContainsKey(code | ACCURATE_GAUGE_SIGN))
+                        throw new Exception(
+                            $"this type of IAccurateGauge ({code}) is not registered.");
+                    return (IAccurateGauge)Restore(registered_functions_via_code[code | ACCURATE_GAUGE_SIGN]);
             }
         }
         private ISerializableFunction Restore(IFunctionSerializer serializer)

@@ -6,6 +6,7 @@ namespace Photon.NeuralNetwork.Chista.Trainer
 {
     public interface INetProcess : INeuralNetworkInformation
     {
+        public IAccurateGauge Accurate { get; }
         public Brain Brain { get; }
         public double Accuracy { get; }
         public NeuralNetworkFlash LastPrediction { get; }

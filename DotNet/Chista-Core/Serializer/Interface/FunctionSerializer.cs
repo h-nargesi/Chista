@@ -4,6 +4,7 @@ using System.IO;
 using System.Text;
 using System.Reflection;
 using Photon.NeuralNetwork.Chista.Implement;
+using Photon.NeuralNetwork.Chista.Trainer;
 
 namespace Photon.NeuralNetwork.Chista.Serializer
 {
@@ -38,6 +39,8 @@ namespace Photon.NeuralNetwork.Chista.Serializer
                 Ucode |= FunctionSerializerCore.DATA_CONVERTOR_SIGN;
             if (typeof(IRegularization).IsAssignableFrom(FunctionType))
                 Ucode |= FunctionSerializerCore.REGULARIZATION_SIGN;
+            if (typeof(IAccurateGauge).IsAssignableFrom(FunctionType))
+                Ucode |= FunctionSerializerCore.ACCURATE_GAUGE_SIGN;
 
             if (Code == Ucode)
                 throw new ArgumentException(FunctionType.Name,

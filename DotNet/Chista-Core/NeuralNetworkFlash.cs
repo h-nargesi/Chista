@@ -6,51 +6,31 @@ namespace Photon.NeuralNetwork.Chista
 {
     public class NeuralNetworkFlash : INeuralNetworkInformation
     {
-        internal readonly Vector<double>[] SignalsSum;
-        internal readonly Vector<double>[] InputSignals;
-        private readonly List<Vector<double>[]> SignalsExtra;
-        public double[] ResultSignals { get; internal set; }
-
         public NeuralNetworkFlash(int size)
         {
             SignalsSum = new Vector<double>[size];
             InputSignals = new Vector<double>[size + 1];
-            SignalsExtra = new List<Vector<double>[]>();
+            SignalsExtra = new ExtraSignals(size);
         }
 
-        public Vector<double>[] this[int index]
-        {
-            get
-            {
-                while (SignalsExtra.Count <= index)
-                    SignalsExtra.Add(new Vector<double>[SignalsSum.Length]);
-                return SignalsExtra[index];
-            }
-            set
-            {
-                while (SignalsExtra.Count <= index)
-                    SignalsExtra.Add(new Vector<double>[SignalsSum.Length]);
-                SignalsExtra[index] = value;
-            }
-        }
+        #region Forward Propagation
+        internal readonly Vector<double>[] SignalsSum;
+        internal readonly Vector<double>[] InputSignals;
+        internal readonly ExtraSignals SignalsExtra;
+        #endregion
 
-        public double TotalError { get; internal set; }
-        public double Accuracy
+        #region Final Stage
+        public double[] ResultSignals { get; internal set; }
+        internal void Finilize(Vector<double> errors)
         {
-            get
-            {
-                if (ResultSignals == null || ResultSignals.Length < 1) return 0;
-                else return 1 - TotalError / ResultSignals.Length;
-            }
+            Errors = errors.ToArray();
+            TotalError = errors.PointwiseAbs().Sum();
+            ErrorAverage = errors.Count > 0 ? TotalError / errors.Count : 0;
         }
-        public double ErrorAverage
-        {
-            get
-            {
-                if (ResultSignals == null || ResultSignals.Length < 1) return 0;
-                else return TotalError / ResultSignals.Length;
-            }
-        }
+        public double[] Errors { get; private set; }
+        public double TotalError { get; private set; }
+        public double ErrorAverage { get; private set; }
+        #endregion
 
         public override string ToString()
         {
