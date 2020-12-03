@@ -17,13 +17,18 @@ namespace Photon.NeuralNetwork.Chista
         public double MinAccept { get; }
         public double MaxReject { get; }
 
-        public Vector<double> ErrorCalculation(Vector<double> output, Vector<double> values)
+        public Vector<double> ErrorCalculation(NeuralNetworkFlash prediction, Vector<double> _)
         {
+            var output = prediction.InputSignals[^1];
             var error = new double[output.Count];
             for (int i = 0; i < output.Count; i++)
                 if (output[i] >= MinAccept) error[i] = 1 - output[i];
                 else if (output[i] <= MaxReject) error[i] = 0 - output[i];
-            return Vector<double>.Build.DenseOfArray(error);
+            output = Vector<double>.Build.DenseOfArray(error);
+            prediction.SetErrors(output);
+            // TODO: change this
+            prediction.Accuracy = 1 - prediction.ErrorAverage;
+            return output;
         }
 
         public override string ToString()
