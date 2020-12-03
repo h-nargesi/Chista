@@ -11,10 +11,16 @@ namespace Photon.NeuralNetwork.Chista.Trainer
         private int record_count;
         private double total_accruacy;
 
-        public NetProcess(ChistaNet brain)
+        public NetProcess(IChistaNet brain)
         {
             RunningBrain = brain ?? throw new ArgumentNullException(nameof(brain));
             history = new NetProcessHistory();
+        }
+        public NetProcess(INeuralNetworkImage image)
+        {
+            if (image == null)
+                throw new ArgumentNullException(nameof(image));
+            history = NetProcessHistory.Restore(image);
         }
         public NetProcess(NetProcessInfo state)
         {
@@ -51,9 +57,6 @@ namespace Photon.NeuralNetwork.Chista.Trainer
                 RunningBrain = new ChistaNetLine(line_image);
 
             else throw new Exception("The stable image does not exist.");
-
-            record_count = 0;
-            total_accruacy = 0;
         }
         public void ChangeSatate(NeuralNetworkFlash predict)
         {

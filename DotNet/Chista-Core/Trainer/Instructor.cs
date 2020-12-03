@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Photon.NeuralNetwork.Chista.Implement;
 using Photon.NeuralNetwork.Chista.Trainer.Delegates;
 
 namespace Photon.NeuralNetwork.Chista.Trainer
@@ -103,21 +104,21 @@ namespace Photon.NeuralNetwork.Chista.Trainer
             Stage = process_info.Stage;
             Offset = process_info.Offset;
         }
-        public void AddProgress(ChistaNet brain)
+        public void AddRunningProgress(IChistaNet brain)
         {
             if (brain == null) throw new ArgumentNullException(nameof(brain));
             lock (processes) processes.Add(new NetProcess(brain));
         }
-        public void RemoveProgress(int index)
+        public void RemoveRunningProgress(int index)
         {
             lock (processes) processes.RemoveAt(index);
         }
-        public void AddBrainInfo(ChistaNet brain)
+        public void AddOutOfLineProgress(INeuralNetworkImage image)
         {
-            if (brain == null) throw new ArgumentNullException(nameof(brain));
-            lock (out_of_line) out_of_line.Add(new NetProcess(brain));
+            if (image == null) throw new ArgumentNullException(nameof(image));
+            lock (out_of_line) out_of_line.Add(new NetProcess(image));
         }
-        public void RemoveBrainInfo(int index)
+        public void RemoveOutOfLine(int index)
         {
             lock (out_of_line) out_of_line.RemoveAt(index);
         }
@@ -207,17 +208,20 @@ namespace Photon.NeuralNetwork.Chista.Trainer
                     // check new out-of-line process
                     if (Stage == TrainingStages.Evaluation)
                     {
-                        var offset = Offset;
-                        Offset = 0;
-                        Stage = TrainingStages.Training;
+                        bool we_have_out_of_line = false;
                         lock (out_of_line)
                             foreach (var bri in out_of_line)
                                 if (bri.RunningAccuracy < 0)
                                 {
-                                    Offset = offset;
-                                    Stage = TrainingStages.Evaluation;
-                                    break;
+                                    bri.InitialBrain();
+                                    we_have_out_of_line = true;
                                 }
+
+                        if (!we_have_out_of_line)
+                        {
+                            Offset = 0;
+                            Stage = TrainingStages.Training;
+                        }
                     }
 
                     // fetch next record
@@ -271,9 +275,7 @@ namespace Photon.NeuralNetwork.Chista.Trainer
                                         Parallel.ForEach(out_of_line, (process, state, index) =>
                                         {
                                             // do just new out-of-line processes
-                                            if (process.RunningAccuracy >= 0) return;
-                                            // for sure
-                                            if (process.RunningBrain == null) process.InitialBrain();
+                                            if (process.StableAccuracy >= 0) return;
                                             // test this neural network with evaluation data
                                             var flash = process.RunningBrain.Test(record.data);
                                             // calculate total error
@@ -307,6 +309,9 @@ namespace Photon.NeuralNetwork.Chista.Trainer
                                                 if (!processes[p].FinishCurrentState(false)) p++;
                                                 else
                                                 {
+                                                    // reset brain with stable image
+                                                    processes[p].InitialBrain();
+                                                    // move the process to out-of-line list
                                                     we_have_new_out_of_line = true;
                                                     lock (out_of_line) out_of_line.Add(processes[p]);
                                                     processes.RemoveAt(p);
@@ -324,7 +329,10 @@ namespace Photon.NeuralNetwork.Chista.Trainer
                                     case TrainingStages.Evaluation:
                                         lock (out_of_line)
                                             foreach (var ool in out_of_line)
+                                            {
+                                                ool.FinishCurrentState(false);
                                                 ool.ReleaseBrain();
+                                            }
                                         break;
                                 }
                         }
@@ -365,6 +373,7 @@ namespace Photon.NeuralNetwork.Chista.Trainer
 
                     var EpochMax = Math.Max(this.EpochMax, 1U);
                     Stage = TrainingStages.Evaluation;
+                    Offset = 0;
 
                     // initialize data-provider
                     data_provider.Initialize();
@@ -412,6 +421,14 @@ namespace Photon.NeuralNetwork.Chista.Trainer
                             // call event
                             ReflectFinished(record, DateTime.Now.Ticks - start_time,
                                 (int)TrainingStages.Evaluation);
+
+                            if (next_offset == 0)
+                                lock (out_of_line)
+                                    foreach (var ool in out_of_line)
+                                    {
+                                        ool.FinishCurrentState(false);
+                                        ool.ReleaseBrain();
+                                    }
                         }
 
                         // next offset
@@ -420,10 +437,6 @@ namespace Photon.NeuralNetwork.Chista.Trainer
                         Offset = next_offset;
                         Stage = TrainingStages.Evaluation;
                     }
-
-                    // prepare brains
-                    lock (out_of_line)
-                        foreach (var bri in out_of_line) bri.ReleaseBrain();
 
                     // being sure that record geter is finished
                     _ = record_geter.Result;

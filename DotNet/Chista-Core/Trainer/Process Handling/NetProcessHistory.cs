@@ -17,14 +17,7 @@ namespace Photon.NeuralNetwork.Chista.Trainer
 
         public bool AddProgress(INetProcess progress)
         {
-            if (accuracy_chain.Count < 1 || progress.RunningAccuracy > accuracy_chain.First.Value)
-            {
-                accuracy_chain.Clear();
-                accuracy_chain.AddLast(progress.RunningAccuracy);
-                StableNetImage = new NetProcessImage(progress.RunningBrain.Image(), progress.RunningAccuracy);
-                return false;
-            }
-            else
+            if (StableNetImage != null && progress.RunningAccuracy < accuracy_chain.First?.Value)
             {
                 accuracy_chain.AddLast(progress.RunningAccuracy);
 
@@ -44,6 +37,22 @@ namespace Photon.NeuralNetwork.Chista.Trainer
                     return true;
                 }
                 else return false;
+            }
+            else
+            {
+                bool is_stable;
+                if (StableNetImage == null || accuracy_chain.Count > 0)
+                {
+                    accuracy_chain.Clear();
+                    accuracy_chain.AddLast(progress.RunningAccuracy);
+                    is_stable = false;
+                }
+                else is_stable = true;
+
+                StableNetImage = new NetProcessImage(
+                    progress.RunningBrain.Image(), progress.RunningAccuracy);
+
+                return is_stable;
             }
         }
 
@@ -67,6 +76,15 @@ namespace Photon.NeuralNetwork.Chista.Trainer
                 foreach (var accuracy in chain)
                     history.accuracy_chain.AddLast(accuracy);
             }
+
+            return history;
+        }
+        public static NetProcessHistory Restore(INeuralNetworkImage stable_image)
+        {
+            var history = new NetProcessHistory();
+
+            if (stable_image != null)
+                history.StableNetImage = new NetProcessImage(stable_image, -1);
 
             return history;
         }
