@@ -81,11 +81,11 @@ namespace Photon.NeuralNetwork.Chista.Serializer
                 NetProcessSerializer.Serialize(stream, prc);
 
             // serialize out-of-line count
-            buffer = BitConverter.GetBytes(instructor.OutOfLine.Count); // 4-bytes
+            buffer = BitConverter.GetBytes(instructor.OutOfLines.Count); // 4-bytes
             stream.Write(buffer, 0, buffer.Length);
 
             // serialize out-of-line
-            foreach (NetProcess prc in instructor.OutOfLine)
+            foreach (NetProcess prc in instructor.OutOfLines)
                 NetProcessSerializer.Serialize(stream, prc);
         }
 
