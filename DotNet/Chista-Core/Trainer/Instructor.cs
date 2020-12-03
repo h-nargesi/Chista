@@ -103,7 +103,7 @@ namespace Photon.NeuralNetwork.Chista.Trainer
             Stage = process_info.Stage;
             Offset = process_info.Offset;
         }
-        public void AddProgress(Brain brain)
+        public void AddProgress(ChistaNet brain)
         {
             if (brain == null) throw new ArgumentNullException(nameof(brain));
             lock (processes) processes.Add(new NetProcess(brain));
@@ -112,7 +112,7 @@ namespace Photon.NeuralNetwork.Chista.Trainer
         {
             lock (processes) processes.RemoveAt(index);
         }
-        public void AddBrainInfo(Brain brain)
+        public void AddBrainInfo(ChistaNet brain)
         {
             if (brain == null) throw new ArgumentNullException(nameof(brain));
             lock (out_of_line) out_of_line.Add(new NetProcess(brain));

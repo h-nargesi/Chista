@@ -11,7 +11,7 @@ namespace Photon.NeuralNetwork.Chista.Trainer
         private int record_count;
         private double total_accruacy;
 
-        public NetProcess(Brain brain)
+        public NetProcess(ChistaNet brain)
         {
             RunningBrain = brain ?? throw new ArgumentNullException(nameof(brain));
             history = new NetProcessHistory();
@@ -23,9 +23,9 @@ namespace Photon.NeuralNetwork.Chista.Trainer
             history = NetProcessHistory.Restore(state.stable_image, state.accuracy_chain_history);
 
             if (state.running_image is NeuralNetworkImage image)
-                RunningBrain = new Brain(image);
+                RunningBrain = new ChistaNet(image);
             else if (state.running_image is NeuralNetworkLineImage line_image)
-                RunningBrain = new BrainLine(line_image);
+                RunningBrain = new ChistaNetLine(line_image);
 
             else if (state.stable_image == null)
                 throw new ArgumentException(nameof(state),
@@ -39,16 +39,16 @@ namespace Photon.NeuralNetwork.Chista.Trainer
                 RunningAccuracy = total_accruacy / record_count;
         }
 
-        public IBrain RunningBrain { get; private set; }
+        public IChistaNet RunningBrain { get; private set; }
         public double RunningAccuracy { get; private set; }
         public NeuralNetworkFlash LastPrediction { get; private set; }
 
         public void InitialBrain()
         {
             if (StableImage is NeuralNetworkImage image)
-                RunningBrain = new Brain(image);
+                RunningBrain = new ChistaNet(image);
             else if (StableImage is NeuralNetworkLineImage line_image)
-                RunningBrain = new BrainLine(line_image);
+                RunningBrain = new ChistaNetLine(line_image);
 
             else throw new Exception("The stable image does not exist.");
 

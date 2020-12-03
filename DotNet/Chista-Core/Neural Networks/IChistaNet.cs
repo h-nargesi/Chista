@@ -4,7 +4,7 @@ using System.Text;
 
 namespace Photon.NeuralNetwork.Chista.Implement
 {
-    public interface IBrain : INeuralNetworkInformation
+    public interface IChistaNet : INeuralNetworkInformation
     {
         public INeuralNetworkImage Image();
 

@@ -5,27 +5,27 @@ using Photon.NeuralNetwork.Chista.Implement;
 
 namespace Photon.NeuralNetwork.Chista
 {
-    public class BrainLine : IBrain
+    public class ChistaNetLine : IChistaNet
     {
-        public BrainLine(NeuralNetworkLineImage line_image)
+        public ChistaNetLine(NeuralNetworkLineImage line_image)
         {
             if (line_image == null)
                 throw new ArgumentNullException(nameof(line_image), "The nn-line-image is undefined.");
 
-            brains = new Brain[line_image.images.Length];
+            brains = new ChistaNet[line_image.images.Length];
 
             int i = 0;
             foreach (var image in line_image.images)
-                brains[i++] = new Brain(image);
+                brains[i++] = new ChistaNet(image);
 
             combiners = line_image.combiners;
         }
 
         private int index;
-        private readonly Brain[] brains;
+        private readonly ChistaNet[] brains;
         private readonly IDataCombiner[] combiners;
 
-        public IReadOnlyList<Brain> Brains => brains;
+        public IReadOnlyList<ChistaNet> Brains => brains;
         public IReadOnlyList<IDataCombiner> Combiners => combiners;
         public int Index
         {
@@ -48,7 +48,7 @@ namespace Photon.NeuralNetwork.Chista
                 images[b] = brains[b].Image();
             return new NeuralNetworkLineImage(images, combiners, index);
         }
-        INeuralNetworkImage IBrain.Image()
+        INeuralNetworkImage IChistaNet.Image()
         {
             return Image();
         }

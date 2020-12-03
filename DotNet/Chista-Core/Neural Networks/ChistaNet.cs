@@ -7,7 +7,7 @@ using Photon.NeuralNetwork.Chista.Implement;
 
 namespace Photon.NeuralNetwork.Chista
 {
-    public class Brain : IBrain, INeuralNetworkInformation
+    public class ChistaNet : IChistaNet, INeuralNetworkInformation
     {
         private const int lock_time_out = -1;
         private readonly ReaderWriterLock locker = new ReaderWriterLock();
@@ -23,7 +23,7 @@ namespace Photon.NeuralNetwork.Chista
         public int InputCount => layers[0].Synapse.ColumnCount;
         public int OutputCount => layers[^1].Synapse.RowCount;
 
-        public Brain(NeuralNetworkImage image)
+        public ChistaNet(NeuralNetworkImage image)
         {
             if (image == null)
                 throw new ArgumentNullException(nameof(image), "The nn-image is undefined.");
@@ -57,7 +57,7 @@ namespace Photon.NeuralNetwork.Chista
             // release the lock
             finally { locker.ReleaseReaderLock(); }
         }
-        INeuralNetworkImage IBrain.Image()
+        INeuralNetworkImage IChistaNet.Image()
         {
             return Image();
         }
