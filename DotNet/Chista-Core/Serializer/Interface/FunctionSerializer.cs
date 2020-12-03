@@ -39,8 +39,8 @@ namespace Photon.NeuralNetwork.Chista.Serializer
                 Ucode |= FunctionSerializerCore.DATA_CONVERTOR_SIGN;
             if (typeof(IRegularization).IsAssignableFrom(FunctionType))
                 Ucode |= FunctionSerializerCore.REGULARIZATION_SIGN;
-            if (typeof(IAccurateGauge).IsAssignableFrom(FunctionType))
-                Ucode |= FunctionSerializerCore.ACCURATE_GAUGE_SIGN;
+            if (typeof(IDataCombiner).IsAssignableFrom(FunctionType))
+                Ucode |= FunctionSerializerCore.DATA_COMBINER_SIGN;
 
             if (Code == Ucode)
                 throw new ArgumentException(FunctionType.Name,

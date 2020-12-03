@@ -14,7 +14,8 @@ namespace Photon.NeuralNetwork.Chista.Serializer
             ERROR_FUNCTION_SIGN = 0x10000,
             DATA_CONVERTOR_SIGN = 0x20000,
             REGULARIZATION_SIGN = 0x40000,
-            ACCURATE_GAUGE_SIGN = 0x80000;
+            ACCURATE_GAUGE_SIGN = 0x80000,
+            DATA_COMBINER_SIGN = 0x100000;
         private readonly static Dictionary<int, IFunctionSerializer> registered_functions_via_code =
             new Dictionary<int, IFunctionSerializer>();
         public static void RegisterFunction<T>(FunctionSerializer<T> serializer)
@@ -169,29 +170,20 @@ namespace Photon.NeuralNetwork.Chista.Serializer
             // serialaize type and parameters
             Serialize(code, parameters);
         }
-        public void Serialize(IAccurateGauge accurate)
+        public void Serialize(IDataCombiner combiner)
         {
             ushort code;
             byte[] parameters;
-            
-            switch (accurate)
-                {
-                    case AccurateGauge _:
-                        code = 1;
-                        parameters = null;
-                        break;
-                    default:
-                        var attr = GetAttribute(accurate.GetType());
-                        if (!registered_functions_via_code.ContainsKey(attr.code | ACCURATE_GAUGE_SIGN))
-                            throw new ArgumentException(
-                                nameof(accurate), "this type of IAccurateGauge is not registered.");
-                        var serializer = registered_functions_via_code[attr.code | ACCURATE_GAUGE_SIGN];
-                        code = serializer.Code;
-                        parameters = serializer.Serialize(accurate);
-                        if ((parameters?.Length ?? 0) != serializer.ParameterLength)
-                            throw new Exception("invalid parameters' length.");
-                        break;
-                }
+
+            var attr = GetAttribute(combiner.GetType());
+            if (!registered_functions_via_code.ContainsKey(attr.code | DATA_COMBINER_SIGN))
+                throw new ArgumentException(
+                    nameof(combiner), "this type of IDataCombiner is not registered.");
+            var serializer = registered_functions_via_code[attr.code | DATA_COMBINER_SIGN];
+            code = serializer.Code;
+            parameters = serializer.Serialize(combiner);
+            if ((parameters?.Length ?? 0) != serializer.ParameterLength)
+                throw new Exception("invalid parameters' length.");
 
             // serialaize type and parameters
             Serialize(code, parameters);
@@ -275,20 +267,14 @@ namespace Photon.NeuralNetwork.Chista.Serializer
                     return (IRegularization)Restore(registered_functions_via_code[code | REGULARIZATION_SIGN]);
             }
         }
-        public IAccurateGauge RestoreIAccurateGauge()
+        public IDataCombiner RestoreIDataCombiner()
         {
             var code = RestorFunctionType();
 
-            switch (code)
-            {
-                case 0: return null;
-                case 1: return new AccurateGauge();
-                default:
-                    if (!registered_functions_via_code.ContainsKey(code | ACCURATE_GAUGE_SIGN))
-                        throw new Exception(
-                            $"this type of IAccurateGauge ({code}) is not registered.");
-                    return (IAccurateGauge)Restore(registered_functions_via_code[code | ACCURATE_GAUGE_SIGN]);
-            }
+            if (!registered_functions_via_code.ContainsKey(code | DATA_COMBINER_SIGN))
+                throw new Exception(
+                    $"this type of IDataCombiner ({code}) is not registered.");
+            return (IDataCombiner)Restore(registered_functions_via_code[code | DATA_COMBINER_SIGN]);
         }
         private ISerializableFunction Restore(IFunctionSerializer serializer)
         {
