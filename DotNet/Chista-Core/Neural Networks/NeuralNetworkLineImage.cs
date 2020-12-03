@@ -21,11 +21,11 @@ namespace Photon.NeuralNetwork.Chista
 
             if (images.Length < 2)
                 throw new ArgumentOutOfRangeException(nameof(images),
-                    "The count of brains must be greater than two");
+                    "The count of chista-nets must be greater than two");
 
             if (combiners.Length != images.Length - 1)
                 throw new ArgumentOutOfRangeException(nameof(combiners),
-                    "The count of brains and combiners are not matched");
+                    "The count of chista-nets and combiners are not matched");
 
             if (train_index >= images.Length)
                 throw new ArgumentOutOfRangeException(nameof(train_index));
@@ -36,7 +36,7 @@ namespace Photon.NeuralNetwork.Chista
         public override string ToString()
         {
             var buffer = new StringBuilder()
-                .Append("brains:").Append(images.Length);
+                .Append("chista-nets:").Append(images.Length);
             int i = 0;
             buffer
                 .Append(images[i].layers[0].Synapse.ColumnCount)
@@ -56,7 +56,7 @@ namespace Photon.NeuralNetwork.Chista
         {
             var buffer = new StringBuilder("[neural network line image]");
 
-            buffer.Append("brains:").Append(images.Length);
+            buffer.Append("chista-nets:").Append(images.Length);
             int i = 0;
             buffer.Append("\n")
                 .Append(images[i].layers[0].Synapse.ColumnCount)

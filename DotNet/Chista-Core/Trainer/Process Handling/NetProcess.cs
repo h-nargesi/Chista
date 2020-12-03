@@ -11,9 +11,9 @@ namespace Photon.NeuralNetwork.Chista.Trainer
         private int record_count;
         private double total_accruacy;
 
-        public NetProcess(IChistaNet brain)
+        public NetProcess(IChistaNet chista_net)
         {
-            RunningBrain = brain ?? throw new ArgumentNullException(nameof(brain));
+            RunningChistaNet = chista_net ?? throw new ArgumentNullException(nameof(chista_net));
             history = new NetProcessHistory();
         }
         public NetProcess(INeuralNetworkImage image)
@@ -29,9 +29,9 @@ namespace Photon.NeuralNetwork.Chista.Trainer
             history = NetProcessHistory.Restore(state.stable_image, state.accuracy_chain_history);
 
             if (state.running_image is NeuralNetworkImage image)
-                RunningBrain = new ChistaNet(image);
+                RunningChistaNet = new ChistaNet(image);
             else if (state.running_image is NeuralNetworkLineImage line_image)
-                RunningBrain = new ChistaNetLine(line_image);
+                RunningChistaNet = new ChistaNetLine(line_image);
 
             else if (state.stable_image == null)
                 throw new ArgumentException(nameof(state),
@@ -45,16 +45,16 @@ namespace Photon.NeuralNetwork.Chista.Trainer
                 RunningAccuracy = total_accruacy / record_count;
         }
 
-        public IChistaNet RunningBrain { get; private set; }
+        public IChistaNet RunningChistaNet { get; private set; }
         public double RunningAccuracy { get; private set; }
         public NeuralNetworkFlash LastPrediction { get; private set; }
 
-        public void InitialBrain()
+        public void InitialChistaNet()
         {
             if (StableImage is NeuralNetworkImage image)
-                RunningBrain = new ChistaNet(image);
+                RunningChistaNet = new ChistaNet(image);
             else if (StableImage is NeuralNetworkLineImage line_image)
-                RunningBrain = new ChistaNetLine(line_image);
+                RunningChistaNet = new ChistaNetLine(line_image);
 
             else throw new Exception("The stable image does not exist.");
         }
@@ -73,9 +73,9 @@ namespace Photon.NeuralNetwork.Chista.Trainer
             if (is_training) return false;
             else return history.AddProgress(this);
         }
-        public void ReleaseBrain()
+        public void ReleaseChistaNet()
         {
-            RunningBrain = null;
+            RunningChistaNet = null;
             record_count = 0;
             total_accruacy = 0;
         }
@@ -91,7 +91,7 @@ namespace Photon.NeuralNetwork.Chista.Trainer
 
         public NetProcessInfo ProcessInfo()
         {
-            return new NetProcessInfo(RunningBrain?.Image(), record_count, total_accruacy,
+            return new NetProcessInfo(RunningChistaNet?.Image(), record_count, total_accruacy,
                 history.StableNetImage?.Image, history.AccuracyChain());
         }
 
@@ -101,7 +101,7 @@ namespace Photon.NeuralNetwork.Chista.Trainer
         }
         public string PrintInfo()
         {
-            return $"{RunningBrain.PrintInfo()}\ncurrent accuracy: {RunningAccuracy}";
+            return $"{RunningChistaNet.PrintInfo()}\ncurrent accuracy: {RunningAccuracy}";
         }
     }
 }

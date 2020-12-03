@@ -50,7 +50,7 @@ namespace Photon.NeuralNetwork.Chista.Trainer
                 else is_stable = true;
 
                 StableNetImage = new NetProcessImage(
-                    progress.RunningBrain.Image(), progress.RunningAccuracy);
+                    progress.RunningChistaNet.Image(), progress.RunningAccuracy);
 
                 return is_stable;
             }

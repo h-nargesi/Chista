@@ -12,29 +12,29 @@ namespace Photon.NeuralNetwork.Chista
             if (line_image == null)
                 throw new ArgumentNullException(nameof(line_image), "The nn-line-image is undefined.");
 
-            brains = new ChistaNet[line_image.images.Length];
+            chista_nets = new ChistaNet[line_image.images.Length];
 
             int i = 0;
             foreach (var image in line_image.images)
-                brains[i++] = new ChistaNet(image);
+                chista_nets[i++] = new ChistaNet(image);
 
             combiners = line_image.combiners;
         }
 
         private int index;
-        private readonly ChistaNet[] brains;
+        private readonly ChistaNet[] chista_nets;
         private readonly IDataCombiner[] combiners;
 
-        public IReadOnlyList<ChistaNet> Brains => brains;
+        public IReadOnlyList<ChistaNet> ChistaNets => chista_nets;
         public IReadOnlyList<IDataCombiner> Combiners => combiners;
         public int Index
         {
             get { return index; }
             set
             {
-                lock (brains)
+                lock (chista_nets)
                 {
-                    if (value < 0 || value >= brains.Length)
+                    if (value < 0 || value >= chista_nets.Length)
                         throw new ArgumentOutOfRangeException(nameof(Index));
                     index = value;
                 }
@@ -43,9 +43,9 @@ namespace Photon.NeuralNetwork.Chista
 
         public NeuralNetworkLineImage Image()
         {
-            var images = new NeuralNetworkImage[brains.Length];
-            for (int b = 0; b < brains.Length; b++)
-                images[b] = brains[b].Image();
+            var images = new NeuralNetworkImage[chista_nets.Length];
+            for (int b = 0; b < chista_nets.Length; b++)
+                images[b] = chista_nets[b].Image();
             return new NeuralNetworkLineImage(images, combiners, index);
         }
         INeuralNetworkImage IChistaNet.Image()
@@ -56,75 +56,75 @@ namespace Photon.NeuralNetwork.Chista
         private double[] Stimulate(int index, ref double[] inputs)
         {
             int i = 0;
-            double[] result = brains[i].Stimulate(inputs);
+            double[] result = chista_nets[i].Stimulate(inputs);
             while (i <= index)
             {
                 inputs = combiners[i++].Combine(result, inputs);
-                result = brains[i].Stimulate(inputs);
+                result = chista_nets[i].Stimulate(inputs);
             }
             return result;
         }
         public double[] Stimulate(double[] inputs)
         {
-            lock (brains) return Stimulate(index, ref inputs);
+            lock (chista_nets) return Stimulate(index, ref inputs);
         }
         public NeuralNetworkFlash Test(double[] inputs, double[] values = null)
         {
-            lock (brains)
+            lock (chista_nets)
             {
-                // get brains output from frist brain to previous brain
+                // get chista-net's output from frist net to previous chista-net
                 double[] result = index < 1 ? inputs : Stimulate(index - 1, ref inputs);
-                // combine the previous brains' output with input
+                // combine the previous chista-nets' output with input
                 inputs = combiners[index - 1].Combine(result, inputs);
-                // test last brain
-                return brains[index].Test(inputs, values);
+                // test last chista-net
+                return chista_nets[index].Test(inputs, values);
             }
         }
         public NeuralNetworkFlash Train(double[] inputs, double[] values)
         {
-            lock (brains)
+            lock (chista_nets)
             {
-                // get brains output from frist brain to previous brain
+                // get chista-nets output from frist net to previous net
                 double[] result = index < 1 ? inputs : Stimulate(index - 1, ref inputs);
-                // combine the previous brains' output with input
+                // combine the previous chista-nets' output with input
                 inputs = combiners[index - 1].Combine(result, inputs);
-                // test last brain
-                return brains[index].Train(inputs, values);
+                // test last chista-net
+                return chista_nets[index].Train(inputs, values);
             }
         }
         public void FillTotalError(NeuralNetworkFlash flash, double[] values)
         {
-            brains[index].FillTotalError(flash, values);
+            chista_nets[index].FillTotalError(flash, values);
         }
 
         public override string ToString()
         {
             /* THIS CODE IS COPEIED FROM 'NeuralNetworkLineImage'.'ToString()' BECAUSE OF PERFORMANCE */
             var buffer = new StringBuilder()
-                .Append("brains:").Append(brains.Length);
+                .Append("chista-nets:").Append(chista_nets.Length);
             int i = 0;
-            buffer.Append(brains[i].InputCount).Append("->").Append(brains[i].OutputCount);
+            buffer.Append(chista_nets[i].InputCount).Append("->").Append(chista_nets[i].OutputCount);
             while (i < combiners.Length)
             {
                 buffer.Append(">").Append(combiners[i++].ToString()).Append(">");
-                buffer.Append(brains[i].InputCount).Append("x").Append(brains[i].OutputCount);
+                buffer.Append(chista_nets[i].InputCount).Append("x").Append(chista_nets[i].OutputCount);
             }
             return buffer.ToString();
         }
         public string PrintInfo()
         {
             /* THIS CODE IS COPEIED FROM 'NeuralNetworkLineImage'.'PrintInfo()' BECAUSE OF PERFORMANCE */
-            var buffer = new StringBuilder("[brain line]");
+            var buffer = new StringBuilder("[chista-net line]");
 
-            buffer.Append("brains:").Append(brains.Length);
+            buffer.Append("chista-nets:").Append(chista_nets.Length);
             int i = 0;
             buffer.Append("\n")
-                .Append(brains[i].InputCount).Append("->").Append(brains[i].OutputCount);
+                .Append(chista_nets[i].InputCount).Append("->").Append(chista_nets[i].OutputCount);
             while (i < combiners.Length)
             {
                 buffer.Append(">").Append(combiners[i++].ToString()).Append(">");
                 buffer.Append("\n")
-                    .Append(brains[i].InputCount).Append("x").Append(brains[i].OutputCount);
+                    .Append(chista_nets[i].InputCount).Append("x").Append(chista_nets[i].OutputCount);
             }
             return buffer.ToString();
         }

@@ -318,7 +318,7 @@ namespace Photon.NeuralNetwork.Chista
         public string PrintInfo()
         {
             /* THIS CODE IS COPEIED FROM 'NeuralNetworkImage'.'PrintInfo()' BECAUSE OF PERFORMANCE */
-            var buffer = new StringBuilder("[brain]");
+            var buffer = new StringBuilder("[chista net]");
 
             if (in_cvrt != null)
                 buffer.Append("\n")

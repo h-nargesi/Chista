@@ -117,7 +117,7 @@ namespace Photon.NeuralNetwork.Chista
             return new NeuralNetworkImage(layers.ToArray(),
                 error_func, in_cvrt, out_cvrt, regularization);
         }
-        public ChistaNet Brain(double learning, double certainty, double dropout)
+        public ChistaNet ChistaNet(double learning, double certainty, double dropout)
         {
             return new ChistaNet(Image())
             {

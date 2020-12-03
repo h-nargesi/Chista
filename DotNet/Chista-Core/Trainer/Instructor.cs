@@ -65,7 +65,7 @@ namespace Photon.NeuralNetwork.Chista.Trainer
         #endregion
 
 
-        #region Brain Management
+        #region Chista-Net Management
 
         private readonly List<NetProcess> processes = new List<NetProcess>();
         private readonly List<NetProcess> out_of_lines = new List<NetProcess>();
@@ -85,7 +85,7 @@ namespace Photon.NeuralNetwork.Chista.Trainer
                     foreach (NetProcess prc in process_info.Processes)
                     {
                         processes.Add(prc);
-                        if (prc.RunningBrain == null) prc.InitialBrain();
+                        if (prc.RunningChistaNet == null) prc.InitialChistaNet();
                     }
                 CheckBestRunningProcess();
 
@@ -94,7 +94,7 @@ namespace Photon.NeuralNetwork.Chista.Trainer
                     foreach (NetProcess prc in process_info.OutOfLine)
                     {
                         out_of_lines.Add(prc);
-                        if (prc.StableAccuracy < 0) prc.InitialBrain();
+                        if (prc.StableAccuracy < 0) prc.InitialChistaNet();
                     }
                 CheckBestRunningOutOfLine();
                 CheckBestStableOutOfLine();
@@ -105,13 +105,13 @@ namespace Photon.NeuralNetwork.Chista.Trainer
             }
             finally { process_locker.ReleaseWriterLock(); }
         }
-        public void AddRunningProgress(IChistaNet brain)
+        public void AddRunningProgress(IChistaNet chits_net)
         {
             if (!Stopped) throw new Exception("The process is not stoped.");
-            if (brain == null) throw new ArgumentNullException(nameof(brain));
+            if (chits_net == null) throw new ArgumentNullException(nameof(chits_net));
 
             process_locker.AcquireWriterLock(100);
-            try { processes.Add(new NetProcess(brain)); }
+            try { processes.Add(new NetProcess(chits_net)); }
             finally { process_locker.ReleaseWriterLock(); }
         }
         public void RemoveRunningProgress(int index)
@@ -230,7 +230,7 @@ namespace Photon.NeuralNetwork.Chista.Trainer
                             foreach (var bri in out_of_lines)
                                 if (bri.RunningAccuracy < 0)
                                 {
-                                    bri.InitialBrain();
+                                    bri.InitialChistaNet();
                                     we_have_out_of_line = true;
                                 }
 
@@ -306,14 +306,14 @@ namespace Photon.NeuralNetwork.Chista.Trainer
                     // fetch next record
                     record_geter = data_provider.PrepareNextData(Offset, Stage);
 
-                    // prepare brains
+                    // prepare chista-nets
                     lock (out_of_lines)
                         foreach (var bri in out_of_lines)
                         {
                             // to remove current state
-                            bri.ReleaseBrain();
+                            bri.ReleaseChistaNet();
                             // initialize the chista-net again
-                            bri.InitialBrain();
+                            bri.InitialChistaNet();
                         }
 
                     RunEvaluationStage(ref record_geter);
@@ -370,7 +370,7 @@ namespace Photon.NeuralNetwork.Chista.Trainer
                         Parallel.ForEach(processes, (process, state, index) =>
                         {
                             // train this neural network
-                            var flash = process.RunningBrain.Train(record.data, record.result);
+                            var flash = process.RunningChistaNet.Train(record.data, record.result);
                             // change progress state
                             process.ChangeSatate(flash);
                         });
@@ -422,9 +422,9 @@ namespace Photon.NeuralNetwork.Chista.Trainer
                         Parallel.ForEach(processes, (process, state, index) =>
                         {
                             // test this neural network with validation data
-                            var flash = process.RunningBrain.Test(record.data);
+                            var flash = process.RunningChistaNet.Test(record.data);
                             // calculate total error
-                            process.RunningBrain.FillTotalError(flash, record.result);
+                            process.RunningChistaNet.FillTotalError(flash, record.result);
                             // change progress state
                             process.ChangeSatate(flash);
                         });
@@ -446,8 +446,8 @@ namespace Photon.NeuralNetwork.Chista.Trainer
                                 if (!processes[p].FinishCurrentState(false)) p++;
                                 else
                                 {
-                                    // reset brain with stable image
-                                    processes[p].InitialBrain();
+                                    // reset chista-net with stable image
+                                    processes[p].InitialChistaNet();
                                     // move the process to out-of-line list
                                     we_have_new_out_of_line = true;
                                     lock (out_of_lines) out_of_lines.Add(processes[p]);
@@ -498,9 +498,9 @@ namespace Photon.NeuralNetwork.Chista.Trainer
                             // do just new out-of-line processes
                             if (process.StableAccuracy >= 0) return;
                             // test this neural network with evaluation data
-                            var flash = process.RunningBrain.Test(record.data);
+                            var flash = process.RunningChistaNet.Test(record.data);
                             // calculate total error
-                            process.RunningBrain.FillTotalError(flash, record.result);
+                            process.RunningChistaNet.FillTotalError(flash, record.result);
                             // change progress state
                             process.ChangeSatate(flash);
                         });
@@ -518,7 +518,7 @@ namespace Photon.NeuralNetwork.Chista.Trainer
                             foreach (var ool in out_of_lines)
                             {
                                 ool.FinishCurrentState(false);
-                                ool.ReleaseBrain();
+                                ool.ReleaseChistaNet();
                             }
                             if (Offset % update_best_interval == 0)
                                 CheckBestStableOutOfLine();
