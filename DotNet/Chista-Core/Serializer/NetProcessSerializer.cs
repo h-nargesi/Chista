@@ -10,7 +10,7 @@ namespace Photon.NeuralNetwork.Chista.Serializer
     {
         public const ushort VERSION = 1;
 
-        public static void Serialize(FileStream stream, TrainingProcess process)
+        public static void Serialize(FileStream stream, NetProcess process)
         {
             if (stream == null)
                 throw new ArgumentNullException(nameof(stream));
@@ -65,7 +65,7 @@ namespace Photon.NeuralNetwork.Chista.Serializer
             }
         }
 
-        public static TrainingProcess Restor(FileStream stream)
+        public static NetProcess Restor(FileStream stream)
         {
             var buffer = new byte[8];
 
@@ -92,7 +92,7 @@ namespace Photon.NeuralNetwork.Chista.Serializer
             if (buffer[0] == 0) best_image = null;
             else best_image = NeuralNetworkSerializer.Restore(stream);
 
-            return new TrainingProcess(
+            return new NetProcess(
                 new NetProcessInfo(
                     current_image, record_count, current_total_accruacy,
                     best_image, accuracy_chain));

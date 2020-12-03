@@ -77,7 +77,7 @@ namespace Photon.NeuralNetwork.Chista.Serializer
             stream.Write(buffer, 0, buffer.Length);
 
             // serialize process
-            foreach (TrainingProcess prc in instructor.Processes)
+            foreach (NetProcess prc in instructor.Processes)
                 NetProcessSerializer.Serialize(stream, prc);
 
             // serialize out-of-line count
@@ -85,7 +85,7 @@ namespace Photon.NeuralNetwork.Chista.Serializer
             stream.Write(buffer, 0, buffer.Length);
 
             // serialize out-of-line
-            foreach (TrainingProcess prc in instructor.OutOfLine)
+            foreach (NetProcess prc in instructor.OutOfLine)
                 NetProcessSerializer.Serialize(stream, prc);
         }
 

@@ -28,7 +28,7 @@ namespace Photon.NeuralNetwork.Chista.Trainer
 
         public INetProcess TrainProcess()
         {
-            return new TrainingProcess(this);
+            return new NetProcess(this);
         }
     }
 }

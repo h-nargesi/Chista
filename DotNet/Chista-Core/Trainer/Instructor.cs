@@ -66,8 +66,8 @@ namespace Photon.NeuralNetwork.Chista.Trainer
 
         #region Brain Management
 
-        private readonly List<TrainingProcess> processes = new List<TrainingProcess>();
-        private readonly List<TrainingProcess> out_of_line = new List<TrainingProcess>();
+        private readonly List<NetProcess> processes = new List<NetProcess>();
+        private readonly List<NetProcess> out_of_line = new List<NetProcess>();
         public IReadOnlyList<INetProcess> Processes => processes;
         public IReadOnlyList<INetProcess> OutOfLine => out_of_line;
         public void LoadProgress(LearningProcessInfo process_info)
@@ -81,7 +81,7 @@ namespace Photon.NeuralNetwork.Chista.Trainer
             {
                 processes.Clear();
                 if (process_info.Processes != null)
-                    foreach (TrainingProcess prc in process_info.Processes)
+                    foreach (NetProcess prc in process_info.Processes)
                     {
                         processes.Add(prc);
                         if (prc.RunningBrain == null) prc.InitialBrain();
@@ -92,7 +92,7 @@ namespace Photon.NeuralNetwork.Chista.Trainer
             {
                 out_of_line.Clear();
                 if (process_info.OutOfLine != null)
-                    foreach (TrainingProcess prc in process_info.OutOfLine)
+                    foreach (NetProcess prc in process_info.OutOfLine)
                     {
                         out_of_line.Add(prc);
                         if (prc.StableAccuracy < 0) prc.InitialBrain();
@@ -106,7 +106,7 @@ namespace Photon.NeuralNetwork.Chista.Trainer
         public void AddProgress(Brain brain)
         {
             if (brain == null) throw new ArgumentNullException(nameof(brain));
-            lock (processes) processes.Add(new TrainingProcess(brain));
+            lock (processes) processes.Add(new NetProcess(brain));
         }
         public void RemoveProgress(int index)
         {
@@ -115,7 +115,7 @@ namespace Photon.NeuralNetwork.Chista.Trainer
         public void AddBrainInfo(Brain brain)
         {
             if (brain == null) throw new ArgumentNullException(nameof(brain));
-            lock (out_of_line) out_of_line.Add(new TrainingProcess(brain));
+            lock (out_of_line) out_of_line.Add(new NetProcess(brain));
         }
         public void RemoveBrainInfo(int index)
         {

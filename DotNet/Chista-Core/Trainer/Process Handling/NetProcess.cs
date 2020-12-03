@@ -5,22 +5,22 @@ using System.Text;
 
 namespace Photon.NeuralNetwork.Chista.Trainer
 {
-    class TrainingProcess : INetProcess
+    class NetProcess : INetProcess
     {
-        private readonly TrainingProcessHistory history;
+        private readonly NetProcessHistory history;
         private int record_count;
         private double total_accruacy;
 
-        public TrainingProcess(Brain brain)
+        public NetProcess(Brain brain)
         {
             RunningBrain = brain ?? throw new ArgumentNullException(nameof(brain));
-            history = new TrainingProcessHistory();
+            history = new NetProcessHistory();
         }
-        public TrainingProcess(NetProcessInfo state)
+        public NetProcess(NetProcessInfo state)
         {
             if (state == null) throw new ArgumentNullException(nameof(state));
 
-            history = TrainingProcessHistory.Restore(state.stable_image, state.accuracy_chain_history);
+            history = NetProcessHistory.Restore(state.stable_image, state.accuracy_chain_history);
 
             if (state.running_image is NeuralNetworkImage image)
                 RunningBrain = new Brain(image);

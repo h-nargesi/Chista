@@ -5,15 +5,15 @@ using Photon.NeuralNetwork.Chista.Implement;
 
 namespace Photon.NeuralNetwork.Chista.Trainer
 {
-    class TrainingProcessHistory
+    class NetProcessHistory
     {
-        public TrainingProcessHistory()
+        public NetProcessHistory()
         {
             accuracy_chain = new LinkedList<double>();
         }
 
         private readonly LinkedList<double> accuracy_chain;
-        public BrainInfo StableNetImage { get; private set; }
+        public NetProcessImage StableNetImage { get; private set; }
 
         public bool AddProgress(INetProcess progress)
         {
@@ -21,7 +21,7 @@ namespace Photon.NeuralNetwork.Chista.Trainer
             {
                 accuracy_chain.Clear();
                 accuracy_chain.AddLast(progress.RunningAccuracy);
-                StableNetImage = new BrainInfo(progress.RunningBrain.Image(), progress.RunningAccuracy);
+                StableNetImage = new NetProcessImage(progress.RunningBrain.Image(), progress.RunningAccuracy);
                 return false;
             }
             else
@@ -40,7 +40,7 @@ namespace Photon.NeuralNetwork.Chista.Trainer
                 if (descenting_count >= 4 || accuracy_chain.Count > 10)
                 {
                     accuracy_chain.Clear();
-                    StableNetImage = new BrainInfo(StableNetImage.Image, -1);
+                    StableNetImage = new NetProcessImage(StableNetImage.Image, -1);
                     return true;
                 }
                 else return false;
@@ -53,16 +53,16 @@ namespace Photon.NeuralNetwork.Chista.Trainer
             accuracy_chain.CopyTo(chain, 0);
             return chain;
         }
-        public static TrainingProcessHistory Restore(INeuralNetworkImage stable_image, double[] chain)
+        public static NetProcessHistory Restore(INeuralNetworkImage stable_image, double[] chain)
         {
-            var history = new TrainingProcessHistory();
+            var history = new NetProcessHistory();
 
             if (stable_image != null)
             {
                 if (chain == null || chain.Length < 1)
                     throw new ArgumentNullException(nameof(chain));
 
-                history.StableNetImage = new BrainInfo(stable_image, chain[0]);
+                history.StableNetImage = new NetProcessImage(stable_image, chain[0]);
 
                 foreach (var accuracy in chain)
                     history.accuracy_chain.AddLast(accuracy);

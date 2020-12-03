@@ -5,9 +5,9 @@ using Photon.NeuralNetwork.Chista.Implement;
 
 namespace Photon.NeuralNetwork.Chista.Trainer
 {
-    class BrainInfo: INeuralNetworkInformation
+    class NetProcessImage: INeuralNetworkInformation
     {
-        public BrainInfo(INeuralNetworkImage image, double accuracy)
+        public NetProcessImage(INeuralNetworkImage image, double accuracy)
         {
             Image = image ?? throw new ArgumentNullException(nameof(image));
             Accuracy = accuracy;
