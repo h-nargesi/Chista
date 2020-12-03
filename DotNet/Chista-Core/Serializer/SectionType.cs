@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Text;
 
 namespace Photon.NeuralNetwork.Chista.Serializer
@@ -15,6 +16,20 @@ namespace Photon.NeuralNetwork.Chista.Serializer
         public static (byte file_type, ushort version) GetSectionInfo(ushort file_sign)
         {
             return ((byte)((FILE_TYPE_MASK & file_sign) >> 12), (ushort)(VERSION_MASK & file_sign));
+        }
+
+        public static string ReadSigniture(FileStream stream, Encoding encoding)
+        {
+            int data;
+            var buffer = new List<byte>();
+            do
+            {
+                data = stream.ReadByte();
+                buffer.Add((byte)data);
+            }
+            while (data > 0);
+
+            return encoding.GetString(buffer.ToArray());
         }
     }
 }

@@ -1,49 +1,34 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using Photon.NeuralNetwork.Chista.Implement;
 
 namespace Photon.NeuralNetwork.Chista.Trainer
 {
     public class NetProcessInfo
     {
-        public NeuralNetworkImage best_image, current_image;
-        public double[] accuracy_chain;
-        public int record_count;
-        public double current_total_accruacy;
-        public IAccurateGauge accurate;
+        public INeuralNetworkImage stable_image, running_image;
+        public double[] accuracy_chain_history;
+        public int running_record_count;
+        public double running_total_accruacy;
 
         public NetProcessInfo(
-            NeuralNetworkImage current_image,
-            int record_count,
-            double current_total_accruacy,
-            double[] accuracy_chain,
-            NeuralNetworkImage best_image,
-            IAccurateGauge accurate)
+            INeuralNetworkImage running_image,
+            int running_record_count,
+            double running_total_accruacy,
+            INeuralNetworkImage stable_image,
+            double[] accuracy_chain_history)
         {
-            this.current_image = current_image;
-            this.record_count = record_count;
-            this.current_total_accruacy = current_total_accruacy;
-            this.accuracy_chain = accuracy_chain;
-            this.best_image = best_image;
-            this.accurate = accurate;
+            this.running_image = running_image;
+            this.running_record_count = running_record_count;
+            this.running_total_accruacy = running_total_accruacy;
+            this.stable_image = stable_image;
+            this.accuracy_chain_history = accuracy_chain_history;
         }
 
-        public NetProcessInfo(NeuralNetworkImage image, double accruacy, IAccurateGauge accurate)
-        {
-            current_image = image;
-            current_total_accruacy = accruacy;
-            accuracy_chain = new double[0];
-            this.accurate = accurate;
-        }
-
-        public ITrainingProcess TrainProcess()
+        public INetProcess TrainProcess()
         {
             return new TrainingProcess(this);
-        }
-
-        public IBrainInfo BrainInfo()
-        {
-            return new BrainInfo(current_image, current_total_accruacy, accurate);
         }
     }
 }

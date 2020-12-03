@@ -97,9 +97,36 @@ namespace Photon.NeuralNetwork.Chista
             brains[index].FillTotalError(flash, values);
         }
 
+        public override string ToString()
+        {
+            /* THIS CODE IS COPEIED FROM 'NeuralNetworkLineImage'.'ToString()' BECAUSE OF PERFORMANCE */
+            var buffer = new StringBuilder()
+                .Append("brains:").Append(brains.Length);
+            int i = 0;
+            buffer.Append(brains[i].InputCount).Append("->").Append(brains[i].OutputCount);
+            while (i < combiners.Length)
+            {
+                buffer.Append(">").Append(combiners[i++].ToString()).Append(">");
+                buffer.Append(brains[i].InputCount).Append("x").Append(brains[i].OutputCount);
+            }
+            return buffer.ToString();
+        }
         public string PrintInfo()
         {
-            throw new NotImplementedException();
+            /* THIS CODE IS COPEIED FROM 'NeuralNetworkLineImage'.'PrintInfo()' BECAUSE OF PERFORMANCE */
+            var buffer = new StringBuilder("[brain line]");
+
+            buffer.Append("brains:").Append(brains.Length);
+            int i = 0;
+            buffer.Append("\n")
+                .Append(brains[i].InputCount).Append("->").Append(brains[i].OutputCount);
+            while (i < combiners.Length)
+            {
+                buffer.Append(">").Append(combiners[i++].ToString()).Append(">");
+                buffer.Append("\n")
+                    .Append(brains[i].InputCount).Append("x").Append(brains[i].OutputCount);
+            }
+            return buffer.ToString();
         }
     }
 }

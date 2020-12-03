@@ -26,31 +26,29 @@ namespace Photon.NeuralNetwork.Chista.Serializer
             using var stream = File.OpenRead(path);
 
             // read file signature
-            var buffer = new byte[LearningProcessSerializer.SIGNATURE_LENGTH];
-            stream.Read(buffer, 0, buffer.Length);
-            var file_type_diignature = Encoding.ASCII.GetString(buffer);
+            var file_type_signature = SectionType.ReadSigniture(stream, Encoding.ASCII);
+            object result;
 
-            if (file_type_diignature == LearningProcessSerializer.FILE_TYPE_SIGNATURE_STRING)
+            switch (file_type_signature)
             {
-                var prc = LearningProcessSerializer.Restore(stream);
-                extra = ReadExtra(stream);
-                return prc;
+                case LearningProcessSerializer.FILE_TYPE_SIGNATURE_STRING:
+                    result = LearningProcessSerializer.Restore(stream);
+                    extra = ReadExtra(stream);
+                    return result;
+
+                case NeuralNetworkSerializer.FILE_TYPE_SIGNATURE_STRING:
+                    result = NeuralNetworkSerializer.Restore(stream);
+                    extra = ReadExtra(stream);
+                    return result;
+
+                case NeuralNetworkLineSerializer.FILE_TYPE_SIGNATURE_STRING:
+                    result = NeuralNetworkLineSerializer.Restore(stream);
+                    extra = ReadExtra(stream);
+                    return result;
+
+                default:
+                    throw new Exception("Invalid file type");
             }
-            else stream.Seek(0, SeekOrigin.Begin);
-
-            buffer = new byte[NeuralNetworkSerializer.SIGNATURE_LENGTH];
-            stream.Read(buffer, 0, buffer.Length);
-            file_type_diignature = Encoding.ASCII.GetString(buffer);
-
-            if (file_type_diignature == NeuralNetworkSerializer.FILE_TYPE_SIGNATURE_STRING)
-            {
-                var image = NeuralNetworkSerializer.Restore(stream);
-                extra = ReadExtra(stream);
-                return image;
-            }
-            else stream.Seek(0, SeekOrigin.Begin);
-
-            throw new Exception("Invalid file type");
         }
         private static byte[] ReadExtra(FileStream stream)
         {

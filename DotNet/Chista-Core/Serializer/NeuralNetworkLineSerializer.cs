@@ -2,16 +2,17 @@ using System;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
+using Photon.NeuralNetwork.Chista.Implement;
 
 namespace Photon.NeuralNetwork.Chista.Serializer
 {
-    public static class NeuralNetworkSerializer
+    public static class NeuralNetworkLineSerializer
     {
-        public const byte SECTION_TYPE = 1;
-        public const ushort VERSION = 5, SECTION_START_SIGNAL = 0xFFFF;
-        public const string FILE_TYPE_SIGNATURE_STRING = "Chista Neural Network Image";
+        public const byte SECTION_TYPE = 3;
+        public const ushort VERSION = 1, SECTION_START_SIGNAL = 0xFFFF;
+        public const string FILE_TYPE_SIGNATURE_STRING = "Chista Neural Network Line Image";
 
-        public static void Serialize(string path, NeuralNetworkImage image)
+        public static void Serialize(string path, NeuralNetworkLineImage image)
         {
             if (path == null)
                 throw new ArgumentNullException(nameof(path));
@@ -28,7 +29,7 @@ namespace Photon.NeuralNetwork.Chista.Serializer
 
             Serialize(stream, image);
         }
-        public static void Serialize(FileStream stream, NeuralNetworkImage image)
+        public static void Serialize(FileStream stream, NeuralNetworkLineImage image)
         {
             if (stream == null)
                 throw new ArgumentNullException(nameof(stream));
@@ -37,38 +38,39 @@ namespace Photon.NeuralNetwork.Chista.Serializer
 
             byte[] buffer;
 
-            // 1: new version signal
+            // new version signal
             buffer = BitConverter.GetBytes(SECTION_START_SIGNAL); // 2-bytes
             stream.Write(buffer, 0, buffer.Length);
 
-            // 2: serialize section type
+            // serialize section type
             buffer = BitConverter.GetBytes(SECTION_TYPE); // 1-bytes
             stream.Write(buffer, 0, buffer.Length);
 
-            // 3: serialize version
+            // serialize version
             buffer = BitConverter.GetBytes(VERSION); // 2-bytes
             stream.Write(buffer, 0, buffer.Length);
 
-            // 2: serializer layers
-            LayerSerializer.Serialize(stream, image.layers);
+            // serialize index
+            buffer = BitConverter.GetBytes(image.index); // 4-bytes
+            stream.Write(buffer, 0, buffer.Length);
 
             // functions serializer
             var function = new FunctionSerializerCore(stream);
 
-            // 3: serialize error function
-            function.Serialize(image.error_fnc);
+            // serialize images count
+            buffer = BitConverter.GetBytes(image.images.Length); // 4-bytes
+            stream.Write(buffer, 0, buffer.Length);
 
-            // 4: serialize regularization function
-            function.Serialize(image.regularization);
-
-            // 5: serialize data input convertor
-            function.Serialize(image.input_convertor);
-
-            // 6: serialize data output convertor
-            function.Serialize(image.output_convertor);
+            // serialize line
+            NeuralNetworkSerializer.Serialize(stream, image.images[0]);
+            for (int i = 0; i < image.combiners.Length;)
+            {
+                function.Serialize(image.combiners[i++]);
+                NeuralNetworkSerializer.Serialize(stream, image.images[0]);
+            }
         }
 
-        public static NeuralNetworkImage Restore(string path)
+        public static NeuralNetworkLineImage Restore(string path)
         {
             if (path == null)
                 throw new ArgumentNullException(nameof(path));
@@ -78,13 +80,12 @@ namespace Photon.NeuralNetwork.Chista.Serializer
             // read file signature
             var file_type_signature = SectionType.ReadSigniture(stream, Encoding.ASCII);
             if (file_type_signature != FILE_TYPE_SIGNATURE_STRING)
-                throw new Exception("Invalid nni file signature");
+                throw new Exception("Invalid nnli file signature");
 
             // restore file
             return Restore(stream);
-
         }
-        public static NeuralNetworkImage Restore(FileStream stream)
+        public static NeuralNetworkLineImage Restore(FileStream stream)
         {
             if (stream == null)
                 throw new ArgumentNullException(nameof(stream));
@@ -105,37 +106,37 @@ namespace Photon.NeuralNetwork.Chista.Serializer
             stream.Read(buffer, 0, buffer.Length);
             var version = BitConverter.ToUInt16(buffer, 0);
 
-            if (version <= 4)
-                throw new Exception("This version of nni is not supported any more.");
-
             return version switch
             {
                 VERSION => RestoreLastVersion(stream),
                 _ => throw new Exception("This version of nni is not supported."),
             };
         }
-        private static NeuralNetworkImage RestoreLastVersion(FileStream stream)
+        private static NeuralNetworkLineImage RestoreLastVersion(FileStream stream)
         {
-            // 2: read all layers
-            var layers = LayerSerializer.Restore(stream);
+            var buffer = new byte[4];
 
-            // functions serializer
+            stream.Read(buffer, 0, buffer.Length);
+            var index = BitConverter.ToUInt16(buffer, 0);
+
+            stream.Read(buffer, 0, buffer.Length);
+            var length = BitConverter.ToUInt16(buffer, 0);
+
+            if (length < 1) throw new Exception("Invalid length of images.");
+
             var function = new FunctionSerializerCore(stream);
 
-            // 3: read error function
-            var error = function.RestoreIErrorFunction();
+            var images = new NeuralNetworkImage[length];
+            var combiners = new IDataCombiner[length - 1];
 
-            // 4: read regularizer function
-            var regularization = function.RestoreIRegularization();
+            images[0] = NeuralNetworkSerializer.Restore(stream);
+            for (int i = 0; i < combiners.Length;)
+            {
+                combiners[i++] = function.RestoreIDataCombiner();
+                images[i] = NeuralNetworkSerializer.Restore(stream);
+            }
 
-            // 5: read data intput convertor
-            var input_convertor = function.RestoreIDataConvertor();
-
-            // 6: read data output convertor
-            var output_convertor = function.RestoreIDataConvertor();
-
-            return new NeuralNetworkImage(layers, error, input_convertor, output_convertor, regularization);
+            return new NeuralNetworkLineImage(images, combiners, index);
         }
-
     }
 }

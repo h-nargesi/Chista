@@ -19,6 +19,8 @@ namespace Photon.NeuralNetwork.Chista
 
         public Vector<double> ErrorCalculation(NeuralNetworkFlash prediction, Vector<double> _)
         {
+            // TODO: implement
+
             var output = prediction.InputSignals[^1];
             var error = new double[output.Count];
             for (int i = 0; i < output.Count; i++)

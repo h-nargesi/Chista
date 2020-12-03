@@ -8,13 +8,15 @@ namespace Photon.NeuralNetwork.Chista.Serializer
 {
     public static class LearningProcessSerializer
     {
-        public const string FILE_TYPE_SIGNATURE_STRING = "Opertat Training Process File";
         public const byte SECTION_TYPE = 2;
-        public const ushort VERSION = 8;
+        public const ushort VERSION = 9, SECTION_START_SIGNAL = 0xFFFF;
+        public const string FILE_TYPE_SIGNATURE_STRING = "Chista Training Process File";
 
         public static void Serialize(string path, Instructor instructor, string extra)
         {
-            Serialize(path, instructor, extra == null || extra.Length < 1 ? null : Encoding.UTF8.GetBytes(extra));
+            Serialize(path, instructor,
+                extra == null || extra.Length < 1 ? null :
+                Encoding.UTF8.GetBytes(extra));
         }
         public static void Serialize(string path, Instructor instructor, byte[] extra = null)
         {
@@ -27,7 +29,9 @@ namespace Photon.NeuralNetwork.Chista.Serializer
             stream.Flush();
 
             // serialize file signature
-            stream.Write(FILE_TYPE_SIGNATURE);
+            stream.Write(Encoding.ASCII.GetBytes(FILE_TYPE_SIGNATURE_STRING));
+            // end of file signature
+            stream.Write(new byte[1], 0, 1);
 
             // serialize main data
             Serialize(stream, instructor);
@@ -45,8 +49,16 @@ namespace Photon.NeuralNetwork.Chista.Serializer
 
             byte[] buffer;
 
+            // new version signal
+            buffer = BitConverter.GetBytes(SECTION_START_SIGNAL); // 2-bytes
+            stream.Write(buffer, 0, buffer.Length);
+
+            // serialize section type
+            buffer = BitConverter.GetBytes(SECTION_TYPE); // 1-bytes
+            stream.Write(buffer, 0, buffer.Length);
+
             // serialize version
-            buffer = BitConverter.GetBytes(SectionType.GetSectionSign(SECTION_TYPE, VERSION)); // 2-bytes
+            buffer = BitConverter.GetBytes(VERSION); // 2-bytes
             stream.Write(buffer, 0, buffer.Length);
 
             // process's stage info
@@ -64,62 +76,17 @@ namespace Photon.NeuralNetwork.Chista.Serializer
             buffer = BitConverter.GetBytes(instructor.Processes.Count); // 4-bytes
             stream.Write(buffer, 0, buffer.Length);
 
-            // functions serializer
-            var function = new FunctionSerializerCore(stream);
-
             // serialize process
-            foreach (var iprc in instructor.Processes)
-                if (iprc is TrainingProcess prc)
-                {
-                    var state = prc.ProcessInfo();
-
-                    buffer = BitConverter.GetBytes(state.record_count); // 4-bytes
-                    stream.Write(buffer, 0, buffer.Length);
-
-                    buffer = BitConverter.GetBytes(state.current_total_accruacy); // 8-bytes
-                    stream.Write(buffer, 0, buffer.Length);
-
-                    function.Serialize(prc.Accurate);
-
-                    buffer = BitConverter.GetBytes(state.accuracy_chain.Length); // 4-bytes
-                    stream.Write(buffer, 0, buffer.Length);
-
-                    foreach (var ac in state.accuracy_chain)
-                    {
-                        buffer = BitConverter.GetBytes(ac); // 8-bytes
-                        stream.Write(buffer, 0, buffer.Length);
-                    }
-
-                    NeuralNetworkSerializer.Serialize(stream, state.current_image);
-
-                    if (state.best_image == null)
-                    {
-                        buffer = new byte[] { 0 }; // 1-byte
-                        stream.Write(buffer, 0, buffer.Length);
-                    }
-                    else
-                    {
-                        buffer = new byte[] { 1 }; // 1-byte
-                        stream.Write(buffer, 0, buffer.Length);
-
-                        NeuralNetworkSerializer.Serialize(stream, state.best_image);
-                    }
-                }
+            foreach (TrainingProcess prc in instructor.Processes)
+                NetProcessSerializer.Serialize(stream, prc);
 
             // serialize out-of-line count
             buffer = BitConverter.GetBytes(instructor.OutOfLine.Count); // 4-bytes
             stream.Write(buffer, 0, buffer.Length);
 
             // serialize out-of-line
-            foreach (var bi in instructor.OutOfLine)
-            {
-                buffer = BitConverter.GetBytes(bi.Accuracy); // 8-bytes
-                stream.Write(buffer, 0, buffer.Length);
-
-                function.Serialize(bi.Accurate);
-
-                NeuralNetworkSerializer.Serialize(stream, bi.Image);
-            }
+            foreach (TrainingProcess prc in instructor.OutOfLine)
+                NetProcessSerializer.Serialize(stream, prc);
         }
 
         public static LearningProcessInfo Restore(string path)
@@ -141,15 +108,13 @@ namespace Photon.NeuralNetwork.Chista.Serializer
             using var stream = File.OpenRead(path);
 
             // read file signature
-            var buffer = new byte[FILE_TYPE_SIGNATURE.Length];
-            stream.Read(buffer, 0, buffer.Length);
-            var file_type_dignature = Encoding.ASCII.GetString(buffer);
+            var file_type_signature = SectionType.ReadSigniture(stream, Encoding.ASCII);
 
-            if (file_type_dignature != FILE_TYPE_SIGNATURE_STRING)
+            if (file_type_signature != FILE_TYPE_SIGNATURE_STRING)
                 throw new Exception("Invalid nnp file signature");
 
             // restore file
-            var prc = Restore(stream);
+            var process = Restore(stream);
 
             if (stream.Position < stream.Length)
             {
@@ -158,7 +123,7 @@ namespace Photon.NeuralNetwork.Chista.Serializer
             }
             else extra = null;
 
-            return prc;
+            return process;
         }
         public static LearningProcessInfo Restore(FileStream stream)
         {
@@ -167,19 +132,25 @@ namespace Photon.NeuralNetwork.Chista.Serializer
 
             // 1: read version: 2-bytes
             var buffer = new byte[2];
-            stream.Read(buffer, 0, buffer.Length);
-            var (section_type, version) = SectionType.GetSectionInfo(BitConverter.ToUInt16(buffer, 0));
 
-            if (section_type != SECTION_TYPE && version > 2)
+            stream.Read(buffer, 0, buffer.Length);
+            var signal = BitConverter.ToUInt16(buffer, 0);
+            if (signal != SECTION_START_SIGNAL)
+                throw new Exception("Invalid section start signal");
+
+            stream.Read(buffer, 0, 1);
+            var section_type = buffer[0];
+            if (section_type != SECTION_TYPE)
                 throw new Exception("Invalid nnp section type");
 
-            if (version <= 5)
+            stream.Read(buffer, 0, buffer.Length);
+            var version = BitConverter.ToUInt16(buffer, 0);
+
+            if (version <= 8)
                 throw new Exception("This version of nnp is not supported any more.");
 
             return version switch
             {
-                6 => RestoreLastVersion6(stream),
-                7 => RestoreLastVersion7(stream),
                 VERSION => RestoreLastVersion(stream),
                 _ => throw new Exception("This version of nnp list is not supported"),
             };
@@ -200,203 +171,19 @@ namespace Photon.NeuralNetwork.Chista.Serializer
 
             stream.Read(buffer, 0, 4);
             var count = BitConverter.ToInt32(buffer, 0);
-            process_info.Processes = new List<ITrainingProcess>(count);
-
-            var function = new FunctionSerializerCore(stream);
+            process_info.Processes = new List<INetProcess>(count);
 
             for (var i = 0; i < count; i++)
-            {
-                stream.Read(buffer, 0, 4);
-                var record_count = BitConverter.ToInt32(buffer, 0);
-
-                stream.Read(buffer, 0, 8);
-                var current_total_accruacy = BitConverter.ToDouble(buffer, 0);
-
-                var accurate = function.RestoreIAccurateGauge();
-
-                stream.Read(buffer, 0, 4);
-                var chain_count = BitConverter.ToInt32(buffer, 0);
-                var accuracy_chain = new double[chain_count];
-
-                for (var c = 0; c < chain_count; c++)
-                {
-                    stream.Read(buffer, 0, 8);
-                    accuracy_chain[c] = BitConverter.ToDouble(buffer, 0);
-                }
-
-                var current_image = NeuralNetworkSerializer.Restore(stream);
-
-                NeuralNetworkImage best_image;
-                stream.Read(buffer, 0, 1);
-                if (buffer[0] == 0) best_image = null;
-                else best_image = NeuralNetworkSerializer.Restore(stream);
-
-                process_info.Processes.Add(new TrainingProcess(
-                    new NetProcessInfo(
-                        current_image, record_count, current_total_accruacy,
-                        accuracy_chain, best_image, accurate)));
-            }
+                process_info.Processes.Add(NetProcessSerializer.Restor(stream));
 
             stream.Read(buffer, 0, 4);
             count = BitConverter.ToInt32(buffer, 0);
-            process_info.OutOfLine = new List<IBrainInfo>(count);
+            process_info.OutOfLine = new List<INetProcess>(count);
 
             for (var i = 0; i < count; i++)
-            {
-                stream.Read(buffer, 0, 8);
-                var accruacy = BitConverter.ToDouble(buffer, 0);
-                var accurate = function.RestoreIAccurateGauge();
-                var image = NeuralNetworkSerializer.Restore(stream);
-
-                process_info.OutOfLine.Add(new BrainInfo(image, accruacy, accurate));
-            }
+                process_info.OutOfLine.Add(NetProcessSerializer.Restor(stream));
 
             return process_info;
-        }
-        private static LearningProcessInfo RestoreLastVersion7(FileStream stream)
-        {
-            var process_info = new LearningProcessInfo();
-            var buffer = new byte[8];
-
-            stream.Read(buffer, 0, 1);
-            process_info.Stage = (TrainingStages)buffer[0];
-
-            stream.Read(buffer, 0, 4);
-            process_info.Offset = BitConverter.ToUInt32(buffer, 0);
-
-            stream.Read(buffer, 0, 4);
-            process_info.Epoch = BitConverter.ToUInt32(buffer, 0);
-
-            stream.Read(buffer, 0, 4);
-            var count = BitConverter.ToInt32(buffer, 0);
-            process_info.Processes = new List<ITrainingProcess>(count);
-
-            var default_accurat = new AccurateGauge();
-
-            for (var i = 0; i < count; i++)
-            {
-                stream.Read(buffer, 0, 4);
-                var record_count = BitConverter.ToInt32(buffer, 0);
-
-                stream.Read(buffer, 0, 8);
-                var current_total_accruacy = BitConverter.ToDouble(buffer, 0);
-
-                stream.Read(buffer, 0, 4);
-                var chain_count = BitConverter.ToInt32(buffer, 0);
-                var accuracy_chain = new double[chain_count];
-
-                for (var c = 0; c < chain_count; c++)
-                {
-                    stream.Read(buffer, 0, 8);
-                    accuracy_chain[c] = BitConverter.ToDouble(buffer, 0);
-                }
-
-                var current_image = NeuralNetworkSerializer.Restore(stream);
-
-                NeuralNetworkImage best_image;
-                stream.Read(buffer, 0, 1);
-                if (buffer[0] == 0) best_image = null;
-                else best_image = NeuralNetworkSerializer.Restore(stream);
-
-                process_info.Processes.Add(new TrainingProcess(
-                    new NetProcessInfo(
-                        current_image, record_count, current_total_accruacy,
-                        accuracy_chain, best_image, default_accurat)));
-            }
-
-            stream.Read(buffer, 0, 4);
-            count = BitConverter.ToInt32(buffer, 0);
-            process_info.OutOfLine = new List<IBrainInfo>(count);
-
-            for (var i = 0; i < count; i++)
-            {
-                stream.Read(buffer, 0, 8);
-                var accruacy = BitConverter.ToDouble(buffer, 0);
-
-                var image = NeuralNetworkSerializer.Restore(stream);
-
-                process_info.OutOfLine.Add(new BrainInfo(image, accruacy, default_accurat));
-            }
-
-            return process_info;
-        }
-        private static LearningProcessInfo RestoreLastVersion6(FileStream stream)
-        {
-            var process_info = new LearningProcessInfo();
-            var buffer = new byte[8];
-
-            stream.Read(buffer, 0, 1);
-            process_info.Stage = (TrainingStages)buffer[0];
-
-            stream.Read(buffer, 0, 4);
-            process_info.Offset = BitConverter.ToUInt32(buffer, 0);
-
-            stream.Read(buffer, 0, 4);
-            process_info.Epoch = BitConverter.ToUInt32(buffer, 0);
-
-            stream.Read(buffer, 0, 4);
-            var count = BitConverter.ToInt32(buffer, 0);
-            process_info.Processes = new List<ITrainingProcess>(count);
-
-            var default_accurat = new AccurateGauge();
-
-            for (var i = 0; i < count; i++)
-            {
-                stream.Read(buffer, 0, 4);
-                var record_count = BitConverter.ToInt32(buffer, 0);
-
-                stream.Read(buffer, 0, 8);
-                var current_total_accruacy = BitConverter.ToDouble(buffer, 0);
-
-                // out of line is deprecated
-                stream.Read(buffer, 0, 1);
-
-                stream.Read(buffer, 0, 4);
-                var chain_count = BitConverter.ToInt32(buffer, 0);
-                var accuracy_chain = new double[chain_count];
-
-                for (var c = 0; c < chain_count; c++)
-                {
-                    stream.Read(buffer, 0, 8);
-                    accuracy_chain[c] = BitConverter.ToDouble(buffer, 0);
-                }
-
-                var current_image = NeuralNetworkSerializer.Restore(stream);
-
-                NeuralNetworkImage best_image;
-                stream.Read(buffer, 0, 1);
-                if (buffer[0] == 0) best_image = null;
-                else best_image = NeuralNetworkSerializer.Restore(stream);
-
-                process_info.Processes.Add(new TrainingProcess(
-                    new NetProcessInfo(
-                        current_image, record_count, current_total_accruacy,
-                        accuracy_chain, best_image, default_accurat)));
-            }
-
-            stream.Read(buffer, 0, 4);
-            count = BitConverter.ToInt32(buffer, 0);
-            process_info.OutOfLine = new List<IBrainInfo>(count);
-
-            for (var i = 0; i < count; i++)
-            {
-                stream.Read(buffer, 0, 8);
-                var accruacy = BitConverter.ToDouble(buffer, 0);
-
-                var image = NeuralNetworkSerializer.Restore(stream);
-
-                process_info.OutOfLine.Add(new BrainInfo(image, accruacy, default_accurat));
-            }
-
-            return process_info;
-        }
-
-
-        public static int SIGNATURE_LENGTH => FILE_TYPE_SIGNATURE.Length;
-        private readonly static byte[] FILE_TYPE_SIGNATURE;
-        static LearningProcessSerializer()
-        {
-            FILE_TYPE_SIGNATURE = Encoding.ASCII.GetBytes(FILE_TYPE_SIGNATURE_STRING);
         }
     }
 }

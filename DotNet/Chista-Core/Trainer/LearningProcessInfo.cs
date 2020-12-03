@@ -9,7 +9,7 @@ namespace Photon.NeuralNetwork.Chista.Trainer
         public TrainingStages Stage { get; set; } = TrainingStages.Training;
         public uint Offset { get; set; }
         public uint Epoch { get; set; }
-        public List<ITrainingProcess> Processes { get; set; }
-        public List<IBrainInfo> OutOfLine { get; set; }
+        public List<INetProcess> Processes { get; set; }
+        public List<INetProcess> OutOfLine { get; set; }
     }
 }

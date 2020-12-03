@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using Photon.NeuralNetwork.Chista.Implement;
 
 namespace Photon.NeuralNetwork.Chista.Trainer
 {
@@ -8,67 +9,63 @@ namespace Photon.NeuralNetwork.Chista.Trainer
     {
         public TrainingProcessHistory()
         {
-            history = new LinkedList<BrainInfo>();
+            accuracy_chain = new LinkedList<double>();
         }
 
-        private readonly LinkedList<BrainInfo> history;
-        public BrainInfo BestBrainInfo
-        {
-            get { return history.First?.Value; }
-        }
+        private readonly LinkedList<double> accuracy_chain;
+        public BrainInfo StableNetImage { get; private set; }
 
-        public bool AddProgress(ITrainingProcess progress)
+        public bool AddProgress(INetProcess progress)
         {
-            if (history.Count < 1 || progress.Accuracy > history.First.Value.Accuracy)
+            if (accuracy_chain.Count < 1 || progress.RunningAccuracy > accuracy_chain.First.Value)
             {
-                history.Clear();
-                history.AddLast(new BrainInfo(progress.Brain.Image(), progress.Accuracy, progress.Accurate));
+                accuracy_chain.Clear();
+                accuracy_chain.AddLast(progress.RunningAccuracy);
+                StableNetImage = new BrainInfo(progress.RunningBrain.Image(), progress.RunningAccuracy);
                 return false;
             }
             else
             {
-                history.AddLast(new BrainInfo(null, progress.Accuracy, progress.Accurate));
+                accuracy_chain.AddLast(progress.RunningAccuracy);
 
                 double prv_accuracy = 0;
                 int descenting_count = 0;
-                foreach (var info in history)
+                foreach (var acc in accuracy_chain)
                 {
-                    if (prv_accuracy < info.Accuracy) descenting_count = 0;
+                    if (prv_accuracy < acc) descenting_count = 0;
                     else descenting_count++;
-                    prv_accuracy = info.Accuracy;
+                    prv_accuracy = acc;
                 }
 
-                if (descenting_count >= 4) return true;
-                else if (history.Count > 10) return true;
+                if (descenting_count >= 4 || accuracy_chain.Count > 10)
+                {
+                    accuracy_chain.Clear();
+                    StableNetImage = new BrainInfo(StableNetImage.Image, -1);
+                    return true;
+                }
                 else return false;
             }
         }
 
         public double[] AccuracyChain()
         {
-            var c = 0;
-            var chain = new double[history.Count];
-            foreach (var info in history) chain[c++] = info.Accuracy;
+            var chain = new double[accuracy_chain.Count];
+            accuracy_chain.CopyTo(chain, 0);
             return chain;
         }
-        public static TrainingProcessHistory Restore(double[] chain, 
-            NeuralNetworkImage best_image, IAccurateGauge accurate)
+        public static TrainingProcessHistory Restore(INeuralNetworkImage stable_image, double[] chain)
         {
-            if (chain == null)
-                throw new ArgumentNullException(nameof(chain), "History.Restore: accuracy chain is null");
-
             var history = new TrainingProcessHistory();
 
-            if (chain.Length > 0)
+            if (stable_image != null)
             {
-                if (best_image == null)
-                    throw new ArgumentNullException(nameof(best_image), "History.Restore: best_image is null");
+                if (chain == null || chain.Length < 1)
+                    throw new ArgumentNullException(nameof(chain));
 
-                foreach (var ac in chain)
-                {
-                    history.history.AddLast(new BrainInfo(best_image, ac, accurate));
-                    if (best_image != null) best_image = null;
-                }
+                history.StableNetImage = new BrainInfo(stable_image, chain[0]);
+
+                foreach (var accuracy in chain)
+                    history.accuracy_chain.AddLast(accuracy);
             }
 
             return history;

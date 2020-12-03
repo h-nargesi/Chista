@@ -66,17 +66,11 @@ namespace Photon.NeuralNetwork.Chista
 
         public override string ToString()
         {
-            var buffer = new StringBuilder();
-            if (layers != null)
-            {
-                buffer.Append("layers:").Append(layers.Length);
-                if (layers.Length > 0)
-                {
-                    buffer.Append(layers[0].Synapse.ColumnCount);
-                    foreach (var l in layers)
-                        buffer.Append("x").Append(l.Synapse.RowCount);
-                }
-            }
+            var buffer = new StringBuilder()
+                .Append("layers(").Append(layers.Length).Append("): ")
+                .Append(layers[0].Synapse.ColumnCount);
+            foreach (var l in layers)
+                buffer.Append("x").Append(l.Synapse.RowCount);
             return buffer.ToString();
         }
         public string PrintInfo()

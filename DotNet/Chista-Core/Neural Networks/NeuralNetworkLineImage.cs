@@ -35,53 +35,41 @@ namespace Photon.NeuralNetwork.Chista
 
         public override string ToString()
         {
-            var buffer = new StringBuilder();
-            if (layers != null)
+            var buffer = new StringBuilder()
+                .Append("brains:").Append(images.Length);
+            int i = 0;
+            buffer
+                .Append(images[i].layers[0].Synapse.ColumnCount)
+                .Append("x")
+                .Append(images[i].layers[^1].Synapse.RowCount);
+            while (i < combiners.Length)
             {
-                buffer.Append("layers:").Append(layers.Length);
-                if (layers.Length > 0)
-                {
-                    buffer.Append(layers[0].Synapse.ColumnCount);
-                    foreach (var l in layers)
-                        buffer.Append("x").Append(l.Synapse.RowCount);
-                }
+                buffer.Append(">").Append(combiners[i++].ToString()).Append(">");
+                buffer
+                    .Append(images[i].layers[0].Synapse.ColumnCount)
+                    .Append("x")
+                    .Append(images[i].layers[^1].Synapse.RowCount);
             }
             return buffer.ToString();
         }
         public string PrintInfo()
         {
-            var buffer = new StringBuilder("[neural network image]");
+            var buffer = new StringBuilder("[neural network line image]");
 
-            if (input_convertor != null)
-                buffer.Append("\n")
-                    .Append("input data convertor: ").Append(input_convertor.ToString());
-
-            if (layers != null)
+            buffer.Append("brains:").Append(images.Length);
+            int i = 0;
+            buffer.Append("\n")
+                .Append(images[i].layers[0].Synapse.ColumnCount)
+                .Append("x")
+                .Append(images[i].layers[^1].Synapse.RowCount);
+            while (i < combiners.Length)
             {
-                buffer.Append("\n").Append("layers: ").Append(layers.Length);
-                if (layers.Length > 0)
-                {
-                    buffer.Append("\n\t")
-                        .Append("input: ").Append(layers[0].Synapse.ColumnCount).Append(" node(s)");
-                    foreach (var l in layers)
-                        buffer.Append("\n\t").Append("layer: ")
-                            .Append(l.Synapse.RowCount).Append(" node(s)")
-                            .Append(" func=").Append(l.Conduction.ToString());
-                }
+                buffer.Append(">").Append(combiners[i++].ToString()).Append(">");
+                buffer.Append("\n")
+                    .Append(images[i].layers[0].Synapse.ColumnCount)
+                    .Append("x")
+                    .Append(images[i].layers[^1].Synapse.RowCount);
             }
-
-            if (output_convertor != null)
-                buffer.Append("\n")
-                    .Append("output data convertor: ").Append(output_convertor.ToString());
-
-            if (error_fnc != null)
-                buffer.Append("\n")
-                    .Append("error function: ").Append(error_fnc.ToString());
-
-            if (regularization != null)
-                buffer.Append("\n")
-                    .Append("regularization: ").Append(regularization.ToString());
-
             return buffer.ToString();
         }
     }
