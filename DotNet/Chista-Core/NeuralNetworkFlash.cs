@@ -21,7 +21,7 @@ namespace Photon.NeuralNetwork.Chista
 
         #region Final Stage
         public double[] ResultSignals { get; internal set; }
-        internal void Finilize(Vector<double> errors)
+        internal void SetErrors(Vector<double> errors)
         {
             Errors = errors.ToArray();
             TotalError = errors.PointwiseAbs().Sum();
@@ -30,6 +30,7 @@ namespace Photon.NeuralNetwork.Chista
         public double[] Errors { get; private set; }
         public double TotalError { get; private set; }
         public double ErrorAverage { get; private set; }
+        public double Accuracy { get; internal set; }
         #endregion
 
         public override string ToString()

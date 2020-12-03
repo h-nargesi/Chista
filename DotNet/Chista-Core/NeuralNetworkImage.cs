@@ -7,7 +7,7 @@ using Photon.NeuralNetwork.Chista.Implement;
 
 namespace Photon.NeuralNetwork.Chista
 {
-    public class NeuralNetworkImage : INeuralNetworkInformation
+    public class NeuralNetworkImage : INeuralNetworkImage, INeuralNetworkInformation
     {
         public readonly Layer[] layers;
         public readonly IErrorFunction error_fnc;

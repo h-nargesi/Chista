@@ -7,7 +7,7 @@ using Photon.NeuralNetwork.Chista.Implement;
 
 namespace Photon.NeuralNetwork.Chista
 {
-    public class Brain : INeuralNetworkInformation
+    public class Brain : IBrain, INeuralNetworkInformation
     {
         private const int lock_time_out = -1;
         private readonly ReaderWriterLock locker = new ReaderWriterLock();
@@ -54,6 +54,10 @@ namespace Photon.NeuralNetwork.Chista
             }
             // release the lock
             finally { locker.ReleaseReaderLock(); }
+        }
+        INeuralNetworkImage IBrain.Image()
+        {
+            return Image();
         }
 
         public double[] Stimulate(double[] inputs)
@@ -126,20 +130,16 @@ namespace Photon.NeuralNetwork.Chista
             var delta = Vector<double>.Build.DenseOfArray(values);
             // standardized signals
             if (out_cvrt != null) delta = out_cvrt.Standardize(delta);
-            // calculate error
-            delta = error_fnc.ErrorCalculation(flash.InputSignals[^1], delta);
+            // calculate error and total error
+            delta = error_fnc.ErrorCalculation(flash, delta);
+            // check if is not any error then do not train the network
+            if (flash.TotalError != 0) return;
 
             // it's for multi-thread using
             locker.AcquireWriterLock(lock_time_out);
             // double lr = LearningFactor;
             try
             {
-                // TODO: question => does it can be out of locker block?
-                // calculate total error of network result
-                flash.Finilize(delta);
-                // check if is not any error then do not train the network
-                if (flash.TotalError != 0) return;
-
                 // if nodes are droped out then increase learning factor
                 if (DropoutFactor > 0) LearningFactor /= DropoutFactor;
                 // back-propagation
@@ -186,11 +186,9 @@ namespace Photon.NeuralNetwork.Chista
                 // forward-propagation
                 ForwardPropagation(flash, ref signals);
 
-                // calculate error
-                delta = error_fnc.ErrorCalculation(flash.InputSignals[^1], delta);
+                // calculate error and total error of network result
+                delta = error_fnc.ErrorCalculation(flash, delta);
 
-                // calculate total error of network result
-                flash.Finilize(delta);
                 // check if is not any error then do not train the network
                 if (flash.TotalError != 0)
                 {
@@ -280,10 +278,8 @@ namespace Photon.NeuralNetwork.Chista
             var delta = Vector<double>.Build.DenseOfArray(values);
             // standardized signals
             if (out_cvrt != null) delta = out_cvrt.Standardize(delta);
-            // calculate error
-            delta = error_fnc.ErrorCalculation(flash.InputSignals[^1], delta);
-            // calculate total error of network result
-            flash.Finilize(delta);
+            // calculate error and total error of network result
+            error_fnc.ErrorCalculation(flash, delta);
         }
 
 #if NaN_CHEK
@@ -358,5 +354,6 @@ namespace Photon.NeuralNetwork.Chista
 
             return buffer.ToString();
         }
+
     }
 }
