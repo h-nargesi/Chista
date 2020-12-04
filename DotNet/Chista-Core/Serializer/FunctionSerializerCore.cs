@@ -308,6 +308,7 @@ namespace Photon.NeuralNetwork.Chista.Serializer
                 ReLU _ => 2,
                 SoftReLU _ => 3,
                 Straight _ => 4,
+                SoftMax _=> 5,
                 _ => throw new ArgumentException(
                     nameof(conduction), "this type of IConduction is not registered."),
             };
@@ -323,6 +324,7 @@ namespace Photon.NeuralNetwork.Chista.Serializer
                 2 => new ReLU(),
                 3 => new SoftReLU(),
                 4 => new Straight(),
+                5 => new SoftMax(),
                 _ => throw new ArgumentException(
                     nameof(value), "this type of IConduction is not registered."),
             };
