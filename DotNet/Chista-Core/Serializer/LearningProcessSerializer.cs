@@ -178,10 +178,10 @@ namespace Photon.NeuralNetwork.Chista.Serializer
 
             stream.Read(buffer, 0, 4);
             count = BitConverter.ToInt32(buffer, 0);
-            process_info.OutOfLine = new List<INetProcess>(count);
+            process_info.OutOfLines = new List<INetProcess>(count);
 
             for (var i = 0; i < count; i++)
-                process_info.OutOfLine.Add(NetProcessSerializer.Restor(stream));
+                process_info.OutOfLines.Add(NetProcessSerializer.Restor(stream));
 
             return process_info;
         }

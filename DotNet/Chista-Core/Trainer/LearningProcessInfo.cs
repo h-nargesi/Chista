@@ -10,6 +10,6 @@ namespace Photon.NeuralNetwork.Chista.Trainer
         public uint Offset { get; set; }
         public uint Epoch { get; set; }
         public List<INetProcess> Processes { get; set; }
-        public List<INetProcess> OutOfLine { get; set; }
+        public List<INetProcess> OutOfLines { get; set; }
     }
 }

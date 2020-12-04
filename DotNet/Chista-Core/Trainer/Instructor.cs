@@ -62,6 +62,13 @@ namespace Photon.NeuralNetwork.Chista.Trainer
                 default: throw new Exception($"Invalid stage! ({Stage})");
             }
         }
+        private void SetNewState(uint progress, TrainingStages stage)
+        {
+            Offset = progress;
+            Stage = stage;
+            if (progress == 0 && stage == TrainingStages.Training)
+                Epoch++;
+        }
         #endregion
 
 
@@ -73,11 +80,10 @@ namespace Photon.NeuralNetwork.Chista.Trainer
         public IReadOnlyList<INetProcess> OutOfLines => out_of_lines;
         public void LoadProgress(LearningProcessInfo process_info)
         {
+            if (process_info == null) throw new ArgumentNullException(nameof(process_info));
             if (!Stopped) throw new Exception("The process is not stoped.");
-            if (process_info == null)
-                throw new ArgumentNullException(nameof(process_info));
 
-            process_locker.AcquireWriterLock(1000);
+            process_locker.AcquireWriterLock(100);
             try
             {
                 processes.Clear();
@@ -90,8 +96,8 @@ namespace Photon.NeuralNetwork.Chista.Trainer
                 CheckBestRunningProcess();
 
                 out_of_lines.Clear();
-                if (process_info.OutOfLine != null)
-                    foreach (NetProcess prc in process_info.OutOfLine)
+                if (process_info.OutOfLines != null)
+                    foreach (NetProcess prc in process_info.OutOfLines)
                     {
                         out_of_lines.Add(prc);
                         if (prc.StableAccuracy < 0) prc.InitialChistaNet();
@@ -107,8 +113,8 @@ namespace Photon.NeuralNetwork.Chista.Trainer
         }
         public void AddRunningProgress(IChistaNet chits_net)
         {
-            if (!Stopped) throw new Exception("The process is not stoped.");
             if (chits_net == null) throw new ArgumentNullException(nameof(chits_net));
+            if (!Stopped) throw new Exception("The process is not stoped.");
 
             process_locker.AcquireWriterLock(100);
             try { processes.Add(new NetProcess(chits_net)); }
@@ -117,14 +123,16 @@ namespace Photon.NeuralNetwork.Chista.Trainer
         public void RemoveRunningProgress(int index)
         {
             if (!Stopped) throw new Exception("The process is not stoped.");
+
             process_locker.AcquireWriterLock(100);
             try { processes.RemoveAt(index); }
             finally { process_locker.ReleaseWriterLock(); }
         }
         public void AddOutOfLineProgress(INeuralNetworkImage image)
         {
-            if (!Stopped) throw new Exception("The process is not stoped.");
             if (image == null) throw new ArgumentNullException(nameof(image));
+            if (!Stopped) throw new Exception("The process is not stoped.");
+
             process_locker.AcquireWriterLock(100);
             try { out_of_lines.Add(new NetProcess(image)); }
             finally { process_locker.ReleaseWriterLock(); }
@@ -132,6 +140,7 @@ namespace Photon.NeuralNetwork.Chista.Trainer
         public void RemoveOutOfLine(int index)
         {
             if (!Stopped) throw new Exception("The process is not stoped.");
+
             process_locker.AcquireWriterLock(100);
             try { out_of_lines.RemoveAt(index); }
             finally { process_locker.ReleaseWriterLock(); }
@@ -148,7 +157,9 @@ namespace Photon.NeuralNetwork.Chista.Trainer
                 .Append(", stage: ").Append(Stage.ToString().ToLower())
                 .Append(", offset: ").Append(Offset);
 
-            lock (processes)
+            process_locker.AcquireReaderLock(-1);
+            try
+            {
                 if (processes.Count > 0)
                 {
                     int best_index = -1, current_index = -1; double best_accuracy = -1;
@@ -165,7 +176,6 @@ namespace Photon.NeuralNetwork.Chista.Trainer
                         .Append(processes[best_index].PrintInfo());
                 }
 
-            lock (out_of_lines)
                 if (out_of_lines.Count > 0)
                 {
                     int best_index = -1, current_index = -1; double best_accuracy = -1;
@@ -181,12 +191,11 @@ namespace Photon.NeuralNetwork.Chista.Trainer
                     buffer.Append("\n#best out_of_line\n")
                         .Append(out_of_lines[best_index].PrintInfo());
                 }
+            }
+            finally { process_locker.ReleaseReaderLock(); }
 
             return buffer.ToString();
         }
-
-        // best stable process and out-of-line
-        // best running process and out-of-line
         #endregion
 
 
@@ -207,6 +216,8 @@ namespace Photon.NeuralNetwork.Chista.Trainer
         public bool Stopped { get; private set; } = true;
         public Task Start()
         {
+            if (!Stopped) throw new Exception("The prcoess already is running");
+
             Canceling = false;
             return Task.Run(() =>
             {
@@ -214,19 +225,20 @@ namespace Photon.NeuralNetwork.Chista.Trainer
 
                 try
                 {
-                    process_locker.AcquireWriterLock(5000);
-                    Stopped = false;
-
-                    // initialize data-provider
-                    data_provider.Initialize();
-                    // initialize by developer
-                    OnInitialize();
-
-                    // check new out-of-line process
-                    if (Stage == TrainingStages.Evaluation)
+                    process_locker.AcquireReaderLock(3000);
+                    try
                     {
-                        bool we_have_out_of_line = false;
-                        lock (out_of_lines)
+                        Stopped = false;
+
+                        // initialize data-provider
+                        data_provider.Initialize();
+                        // initialize by developer
+                        OnInitialize();
+
+                        // check new out-of-line process
+                        if (Stage == TrainingStages.Evaluation)
+                        {
+                            bool we_have_out_of_line = false;
                             foreach (var bri in out_of_lines)
                                 if (bri.RunningAccuracy < 0)
                                 {
@@ -234,56 +246,52 @@ namespace Photon.NeuralNetwork.Chista.Trainer
                                     we_have_out_of_line = true;
                                 }
 
-                        if (!we_have_out_of_line)
-                        {
-                            Offset = 0;
-                            Stage = TrainingStages.Training;
+                            if (!we_have_out_of_line)
+                            {
+                                Offset = 0;
+                                Stage = TrainingStages.Training;
+                            }
                         }
+
+                        // fetch next record
+                        record_geter = data_provider.PrepareNextData(Offset, Stage);
+
+                        // training loop
+                        while (!Canceling && processes.Count > 0 && (EpochMax < 1 || Epoch < EpochMax))
+                        {
+                            switch (Stage)
+                            {
+                                case TrainingStages.Training:
+                                    RunTrainingStage(ref record_geter);
+                                    goto case TrainingStages.Validation;
+                                case TrainingStages.Validation:
+                                    RunValidationStage(ref record_geter);
+                                    goto case TrainingStages.Evaluation;
+                                case TrainingStages.Evaluation:
+                                    RunEvaluationStage(ref record_geter);
+                                    break;
+                            }
+                        }
+
                     }
-
-                    // fetch next record
-                    record_geter = data_provider.PrepareNextData(Offset, Stage);
-
-                    // first round
-                    switch (Stage)
+                    finally
                     {
-                        case TrainingStages.Validation:
-                            RunValidationStage(ref record_geter);
-                            RunEvaluationStage(ref record_geter);
-                            Epoch++;
-                            break;
-                        case TrainingStages.Evaluation:
-                            RunEvaluationStage(ref record_geter);
-                            Epoch++;
-                            break;
+                        Stopped = true;
+                        process_locker.ReleaseReaderLock();
+
+                        record_geter?.Wait();
+                        data_provider.Dispose();
+
+                        OnFinished();
                     }
-
-                    // training loop
-                    while (EpochMax < 1 || Epoch < EpochMax)
-                    {
-                        RunTrainingStage(ref record_geter);
-                        RunValidationStage(ref record_geter);
-                        RunEvaluationStage(ref record_geter);
-
-                        Epoch++;
-                    }
-
-                    // being sure that record geter is finished
-                    record_geter.Wait();
                 }
                 catch (Exception ex) { OnError(ex); }
-                finally
-                {
-                    Stopped = true;
-                    if (process_locker.IsWriterLockHeld)
-                        process_locker.ReleaseWriterLock();
-                    data_provider.Dispose();
-                    OnFinished();
-                }
             });
         }
         public Task Evaluate()
         {
+            if (!Stopped) throw new Exception("The prcoess already is running");
+
             Canceling = false;
             return Task.Run(() =>
             {
@@ -291,23 +299,24 @@ namespace Photon.NeuralNetwork.Chista.Trainer
 
                 try
                 {
-                    process_locker.AcquireWriterLock(5000);
-                    Stopped = false;
+                    process_locker.AcquireReaderLock(3000);
+                    try
+                    {
+                        Stopped = false;
 
-                    if (out_of_lines.Count < 1) return;
-                    Stage = TrainingStages.Evaluation;
-                    Offset = 0;
+                        if (out_of_lines.Count < 1) return;
+                        Stage = TrainingStages.Evaluation;
+                        Offset = 0;
 
-                    // initialize data-provider
-                    data_provider.Initialize();
-                    // initialize by developer
-                    OnInitialize();
+                        // initialize data-provider
+                        data_provider.Initialize();
+                        // initialize by developer
+                        OnInitialize();
 
-                    // fetch next record
-                    record_geter = data_provider.PrepareNextData(Offset, Stage);
+                        // fetch next record
+                        record_geter = data_provider.PrepareNextData(Offset, Stage);
 
-                    // prepare chista-nets
-                    lock (out_of_lines)
+                        // prepare chista-nets
                         foreach (var bri in out_of_lines)
                         {
                             // to remove current state
@@ -316,20 +325,20 @@ namespace Photon.NeuralNetwork.Chista.Trainer
                             bri.InitialChistaNet();
                         }
 
-                    RunEvaluationStage(ref record_geter);
+                        RunEvaluationStage(ref record_geter);
+                    }
+                    finally
+                    {
+                        Stopped = true;
+                        process_locker.ReleaseReaderLock();
 
-                    // being sure that record geter is finished
-                    record_geter.Wait();
+                        record_geter.Wait();
+                        data_provider.Dispose();
+
+                        OnFinished();
+                    }
                 }
                 catch (Exception ex) { OnError(ex); }
-                finally
-                {
-                    Stopped = true;
-                    process_locker.ReleaseWriterLock();
-                    data_provider.Dispose();
-
-                    OnFinished();
-                }
             });
         }
         public void Stop()
@@ -344,8 +353,6 @@ namespace Photon.NeuralNetwork.Chista.Trainer
 
         private void RunTrainingStage(ref Task<Record> record_geter)
         {
-            if (processes.Count < 1) return;
-
             // training loop
             while (!Canceling && Stage == TrainingStages.Training)
             {
@@ -358,47 +365,52 @@ namespace Photon.NeuralNetwork.Chista.Trainer
                 // fetch next record
                 record_geter = data_provider.PrepareNextData(next_offset, next_stage);
 
-                if (record != null && record.data != null && record.result != null)
+                if (record == null || record.data == null || record.result == null)
                 {
-                    if (Canceling) break;
-
-                    // reporting vriables
-                    var start_time = DateTime.Now.Ticks;
-
-                    lock (processes)
-                    {
-                        Parallel.ForEach(processes, (process, state, index) =>
-                        {
-                            // train this neural network
-                            var flash = process.RunningChistaNet.Train(record.data, record.result);
-                            // change progress state
-                            process.ChangeSatate(flash);
-                        });
-                        if (Offset % update_best_interval == 0)
-                            CheckBestRunningProcess();
-                    }
-
-                    if (Canceling) break;
-                    // call event
-                    ReflectFinished(record, DateTime.Now.Ticks - start_time, 0);
-
-                    if (next_offset == 0)
-                        // if next round is first round of stage
-                        // if this round is end round of stage
-                        lock (processes)
-                            foreach (var progress in processes)
-                                progress.FinishCurrentState(true);
+                    SetNewState(next_offset, next_stage);
+                    continue;
                 }
 
-                Offset = next_offset;
-                Stage = next_stage;
+                // cancel before networks training
+                if (Canceling) break;
+
+                // reporting time interval
+                var time_interval = DateTime.Now.Ticks;
+
+                // CAUTION don's cancel the process in this area until to change offset
+                Parallel.ForEach(processes, (process, state, index) =>
+                {
+                    // train this neural network
+                    var flash = process.RunningChistaNet.Train(record.data, record.result);
+                    // change progress state
+                    process.ChangeSatate(flash);
+                });
+
+                // calculate duration time
+                time_interval = DateTime.Now.Ticks - time_interval;
+
+                if (next_offset == 0)
+                    // if next round is first round of stage
+                    // if this round is end round of stage
+                    foreach (var progress in processes)
+                        progress.FinishCurrentState(true);
+
+                // CAUTION don's cancel the process until this area
+                SetNewState(next_offset, next_stage);
+
+                // it is safe to cancel
+                if (Canceling) break;
+
+                if (Offset % update_best_interval == 0)
+                    CheckBestRunningProcess();
+
+                // call event
+                ReflectFinished(record, time_interval, 0);
             }
         }
         private void RunValidationStage(ref Task<Record> record_geter)
         {
-            if (processes.Count < 1) return;
-
-            // training loop
+            // validation loop
             while (!Canceling && Stage == TrainingStages.Validation)
             {
                 // current record
@@ -410,49 +422,58 @@ namespace Photon.NeuralNetwork.Chista.Trainer
                 // fetch next record
                 record_geter = data_provider.PrepareNextData(next_offset, next_stage);
 
-                if (record != null && record.data != null && record.result != null)
+                if (record == null || record.data == null || record.result == null)
                 {
-                    if (Canceling) break;
+                    SetNewState(next_offset, next_stage);
+                    continue;
+                }
 
-                    // reporting vriables
-                    var start_time = DateTime.Now.Ticks;
+                // cancel before networks training
+                if (Canceling) break;
 
-                    lock (processes)
-                    {
-                        Parallel.ForEach(processes, (process, state, index) =>
-                        {
-                            // test this neural network with validation data
-                            var flash = process.RunningChistaNet.Test(record.data);
-                            // calculate total error
-                            process.RunningChistaNet.FillTotalError(flash, record.result);
-                            // change progress state
-                            process.ChangeSatate(flash);
-                        });
-                        if (Offset % update_best_interval == 0)
-                            CheckBestRunningProcess();
-                    }
+                // reporting time interval
+                var time_interval = DateTime.Now.Ticks;
 
-                    if (Canceling) break;
-                    // call event
-                    ReflectFinished(record, DateTime.Now.Ticks - start_time, 0);
+                Parallel.ForEach(processes, (process, state, index) =>
+                {
+                    // test this neural network with validation data
+                    var flash = process.RunningChistaNet.Test(record.data);
+                    // calculate total error
+                    process.RunningChistaNet.FillTotalError(flash, record.result);
+                    // change progress state
+                    process.ChangeSatate(flash);
+                });
 
-                    if (next_offset == 0)
+                // calculate duration time
+                time_interval = DateTime.Now.Ticks - time_interval;
+
+                if (next_offset == 0)
+                {
+                    var locked = process_locker.UpgradeToWriterLock(-1);
+                    try
                     {
                         // if next round is first round of stage
                         // if this round is end round of stage
                         var we_have_new_out_of_line = false;
-                        lock (processes)
-                            for (int p = 0; p < processes.Count;)
-                                if (!processes[p].FinishCurrentState(false)) p++;
-                                else
-                                {
-                                    // reset chista-net with stable image
-                                    processes[p].InitialChistaNet();
-                                    // move the process to out-of-line list
-                                    we_have_new_out_of_line = true;
-                                    lock (out_of_lines) out_of_lines.Add(processes[p]);
-                                    processes.RemoveAt(p);
-                                }
+                        for (int p = 0; p < processes.Count;)
+                            if (!processes[p].FinishCurrentState(false)) p++;
+                            else if (processes[p].RunningChistaNet is ChistaNetLine net_line &&
+                                    net_line.Index + 1 < net_line.ChistaNets.Count)
+                            {
+                                net_line.Index++;
+                                p++;
+                            }
+                            else
+                            {
+
+                                // reset chista-net with stable image
+                                processes[p].InitialChistaNet();
+                                // move the process to out-of-line list
+                                we_have_new_out_of_line = true;
+                                out_of_lines.Add(processes[p]);
+                                processes.RemoveAt(p);
+                            }
+
                         // skip next evaluation round if we do not have out-of-line process
                         if (!we_have_new_out_of_line)
                         {
@@ -463,16 +484,25 @@ namespace Photon.NeuralNetwork.Chista.Trainer
                                 next_offset, next_stage);
                         }
                     }
+                    finally { process_locker.DowngradeFromWriterLock(ref locked); }
                 }
 
-                Offset = next_offset;
-                Stage = next_stage;
+                // CAUTION don's cancel the process until this area
+                SetNewState(next_offset, next_stage);
+
+                // it is safe to cancel
+                if (Canceling) break;
+
+                if (Offset % update_best_interval == 0)
+                    CheckBestRunningProcess();
+
+                // call event
+                ReflectFinished(record, time_interval, 0);
             }
         }
         private void RunEvaluationStage(ref Task<Record> record_geter)
         {
-            if (out_of_lines.Count < 1) return;
-
+            // evaluation loop
             while (!Canceling && Stage == TrainingStages.Evaluation)
             {
                 // current record
@@ -484,49 +514,54 @@ namespace Photon.NeuralNetwork.Chista.Trainer
                 // fetch next record
                 record_geter = data_provider.PrepareNextData(next_offset, next_stage);
 
-                if (record != null && record.data != null && record.result != null)
+                if (record == null || record.data == null || record.result == null)
                 {
-                    if (Canceling) break;
-
-                    // reporting vriables
-                    var start_time = DateTime.Now.Ticks;
-
-                    lock (out_of_lines)
-                    {
-                        Parallel.ForEach(out_of_lines, (process, state, index) =>
-                        {
-                            // do just new out-of-line processes
-                            if (process.StableAccuracy >= 0) return;
-                            // test this neural network with evaluation data
-                            var flash = process.RunningChistaNet.Test(record.data);
-                            // calculate total error
-                            process.RunningChistaNet.FillTotalError(flash, record.result);
-                            // change progress state
-                            process.ChangeSatate(flash);
-                        });
-                        if (Offset % update_best_interval == 0)
-                            CheckBestRunningOutOfLine();
-                    }
-
-                    if (Canceling) break;
-                    // call event
-                    ReflectFinished(record, DateTime.Now.Ticks - start_time, 0);
-
-                    if (next_offset == 0)
-                        lock (out_of_lines)
-                        {
-                            foreach (var ool in out_of_lines)
-                            {
-                                ool.FinishCurrentState(false);
-                                ool.ReleaseChistaNet();
-                            }
-                            if (Offset % update_best_interval == 0)
-                                CheckBestStableOutOfLine();
-                        }
+                    SetNewState(next_offset, next_stage);
+                    continue;
                 }
 
-                Offset = next_offset;
-                Stage = next_stage;
+                // cancel before networks training
+                if (Canceling) break;
+
+                // reporting vriables
+                var time_interval = DateTime.Now.Ticks;
+
+                Parallel.ForEach(out_of_lines, (process, state, index) =>
+                {
+                    // do just new out-of-line processes
+                    if (process.StableAccuracy >= 0) return;
+                    // test this neural network with evaluation data
+                    var flash = process.RunningChistaNet.Test(record.data);
+                    // calculate total error
+                    process.RunningChistaNet.FillTotalError(flash, record.result);
+                    // change progress state
+                    process.ChangeSatate(flash);
+                });
+
+                // calculate duration time
+                time_interval = DateTime.Now.Ticks - time_interval;
+
+                if (next_offset == 0)
+                {
+                    foreach (var ool in out_of_lines)
+                    {
+                        ool.FinishCurrentState(false);
+                        ool.ReleaseChistaNet();
+                    }
+                    CheckBestStableOutOfLine();
+                }
+
+                // CAUTION don's cancel the process until this area
+                SetNewState(next_offset, next_stage);
+
+                // it is safe to cancel
+                if (Canceling) break;
+
+                if (Offset % update_best_interval == 0)
+                    CheckBestRunningOutOfLine();
+
+                // call event
+                ReflectFinished(record, time_interval, 0);
             }
         }
         #endregion
