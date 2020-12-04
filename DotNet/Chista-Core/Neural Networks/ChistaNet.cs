@@ -133,7 +133,11 @@ namespace Photon.NeuralNetwork.Chista
             // standardized signals
             if (out_cvrt != null) delta = out_cvrt.Standardize(delta);
             // calculate error and total error
-            delta = error_fnc.ErrorCalculation(flash, delta);
+            delta = error_fnc.ErrorCalculation(flash.InputSignals[^1], delta);
+            // calculate total error of network result
+            flash.SetErrors(delta);
+            // set accuracy
+            flash.Accuracy = error_fnc.Accuracy(flash);
             // check if is not any error then do not train the network
             if (flash.TotalError != 0) return;
 
@@ -189,7 +193,11 @@ namespace Photon.NeuralNetwork.Chista
                 ForwardPropagation(flash, ref signals);
 
                 // calculate error and total error of network result
-                delta = error_fnc.ErrorCalculation(flash, delta);
+                delta = error_fnc.ErrorCalculation(flash.InputSignals[^1], delta);
+                // calculate total error of network result
+                flash.SetErrors(delta);
+                // set accuracy
+                flash.Accuracy = error_fnc.Accuracy(flash);
 
                 // check if is not any error then do not train the network
                 if (flash.TotalError != 0)
@@ -281,7 +289,11 @@ namespace Photon.NeuralNetwork.Chista
             // standardized signals
             if (out_cvrt != null) delta = out_cvrt.Standardize(delta);
             // calculate error and total error of network result
-            error_fnc.ErrorCalculation(flash, delta);
+            error_fnc.ErrorCalculation(flash.InputSignals[^1], delta);
+            // calculate total error of network result
+            flash.SetErrors(delta);
+            // set accuracy
+            flash.Accuracy = error_fnc.Accuracy(flash);
         }
 
 #if NaN_CHEK

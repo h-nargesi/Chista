@@ -26,12 +26,13 @@ namespace Photon.NeuralNetwork.Chista.Deprecated
 
         public int IndexCount { get { return indexed.Count; } }
 
-        public Vector<double> ErrorCalculation(NeuralNetworkFlash prediction, Vector<double> values)
+        public Vector<double> ErrorCalculation(Vector<double> output, Vector<double> values)
         {
-            var delta = indexed.PointwiseMultiply(values - prediction.InputSignals[^1]);
-            prediction.SetErrors(delta);
-            prediction.Accuracy = 1 - prediction.ErrorAverage;
-            return delta;
+            return indexed.PointwiseMultiply(values - output);
+        }
+        public double Accuracy(NeuralNetworkFlash prediction)
+        {
+            return 1 - prediction.ErrorAverage;
         }
 
         public override string ToString()
