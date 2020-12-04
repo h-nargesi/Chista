@@ -28,12 +28,12 @@ namespace Photon.NeuralNetwork.Chista
         }
         public double Accuracy(NeuralNetworkFlash prediction)
         {
-            return 1 - prediction.ErrorAverage;
+            return (prediction.InputSignals[^1] * 2 - 1).PointwiseAbs().Sum();
         }
 
         public override string ToString()
         {
-            return $"Tagging: reject<{MaxReject} accpet>{MinAccept}";
+            return $"Tagging: reject:{MaxReject} accpet:{MinAccept}";
         }
     }
 }

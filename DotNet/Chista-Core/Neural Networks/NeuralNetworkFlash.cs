@@ -17,7 +17,6 @@ namespace Photon.NeuralNetwork.Chista
         internal readonly Vector<double>[] SignalsSum;
         internal readonly Vector<double>[] InputSignals;
         internal readonly ExtraSignals SignalsExtra;
-        public Vector<double> OutputSignal => InputSignals[^1];
         #endregion
 
         #region Final Stage
