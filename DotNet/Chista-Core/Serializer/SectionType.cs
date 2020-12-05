@@ -7,7 +7,8 @@ namespace Photon.NeuralNetwork.Chista.Serializer
 {
     class SectionType
     {
-        public const ushort FILE_TYPE_MASK = 0XF000, VERSION_MASK = 0xFFF;
+        public const ushort SECTION_START_SIGNAL = 0xFFFF,
+            FILE_TYPE_MASK = 0XF000, VERSION_MASK = 0xFFF;
 
         public static ushort GetSectionSign(byte file_type, ushort version)
         {
@@ -22,12 +23,9 @@ namespace Photon.NeuralNetwork.Chista.Serializer
         {
             int data;
             var buffer = new List<byte>();
-            do
-            {
-                data = stream.ReadByte();
+
+            while ((data = stream.ReadByte()) > 0)
                 buffer.Add((byte)data);
-            }
-            while (data > 0);
 
             return encoding.GetString(buffer.ToArray());
         }

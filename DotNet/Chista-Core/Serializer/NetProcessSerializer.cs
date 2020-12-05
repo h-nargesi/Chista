@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using Photon.NeuralNetwork.Chista.Implement;
 using Photon.NeuralNetwork.Chista.Trainer;
 
 namespace Photon.NeuralNetwork.Chista.Serializer
@@ -39,12 +40,7 @@ namespace Photon.NeuralNetwork.Chista.Serializer
                 stream.Write(buffer, 0, buffer.Length);
             }
 
-            if (state.running_image is NeuralNetworkImage cu_image)
-                NeuralNetworkSerializer.Serialize(stream, cu_image);
-            else if (state.running_image is NeuralNetworkLineImage cu_line_image)
-                NeuralNetworkLineSerializer.Serialize(stream, cu_line_image);
-            else throw new Exception(
-                "The serializer for this type of INeuralNetworkImage is not registed");
+            NeuralNetworkGeneralSerializer.Serialize(stream, state.running_image);
 
             if (state.stable_image == null)
             {
@@ -56,16 +52,27 @@ namespace Photon.NeuralNetwork.Chista.Serializer
                 buffer = new byte[] { 1 }; // 1-byte
                 stream.Write(buffer, 0, buffer.Length);
 
-                if (state.stable_image is NeuralNetworkImage bs_image)
-                    NeuralNetworkSerializer.Serialize(stream, bs_image);
-                else if (state.stable_image is NeuralNetworkLineImage bs_line_image)
-                    NeuralNetworkLineSerializer.Serialize(stream, bs_line_image);
-                else throw new Exception(
-                    "The serializer for this type of INeuralNetworkImage is not registed");
+                NeuralNetworkGeneralSerializer.Serialize(stream, state.stable_image);
             }
         }
 
-        public static NetProcess Restor(FileStream stream)
+        public static NetProcess Restore(FileStream stream)
+        {
+            if (stream == null)
+                throw new ArgumentNullException(nameof(stream), "The writer stream is not defined.");
+
+            // 1: read version: 2-bytes
+            var buffer = new byte[2];
+            stream.Read(buffer, 0, buffer.Length);
+            var version = BitConverter.ToUInt16(buffer, 0);
+
+            return version switch
+            {
+                VERSION => RestoreLastVersion(stream),
+                _ => throw new Exception($"This version ({version}) of nni is not supported."),
+            };
+        }
+        private static NetProcess RestoreLastVersion(FileStream stream)
         {
             var buffer = new byte[8];
 
@@ -85,12 +92,12 @@ namespace Photon.NeuralNetwork.Chista.Serializer
                 accuracy_chain[c] = BitConverter.ToDouble(buffer, 0);
             }
 
-            var current_image = NeuralNetworkSerializer.Restore(stream);
+            var current_image = NeuralNetworkGeneralSerializer.Restore(stream);
 
-            NeuralNetworkImage best_image;
+            INeuralNetworkImage best_image;
             stream.Read(buffer, 0, 1);
             if (buffer[0] == 0) best_image = null;
-            else best_image = NeuralNetworkSerializer.Restore(stream);
+            else best_image = NeuralNetworkGeneralSerializer.Restore(stream);
 
             return new NetProcess(
                 new NetProcessInfo(

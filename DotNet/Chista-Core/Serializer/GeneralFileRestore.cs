@@ -47,7 +47,7 @@ namespace Photon.NeuralNetwork.Chista.Serializer
                     return result;
 
                 default:
-                    throw new Exception("Invalid file type");
+                    throw new Exception($"Invalid file type ({file_type_signature}).");
             }
         }
         private static byte[] ReadExtra(FileStream stream)

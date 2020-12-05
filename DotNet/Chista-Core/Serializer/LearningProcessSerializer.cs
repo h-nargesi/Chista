@@ -9,7 +9,7 @@ namespace Photon.NeuralNetwork.Chista.Serializer
     public static class LearningProcessSerializer
     {
         public const byte SECTION_TYPE = 2;
-        public const ushort VERSION = 9, SECTION_START_SIGNAL = 0xFFFF;
+        public const ushort VERSION = 9;
         public const string FILE_TYPE_SIGNATURE_STRING = "Chista Training Process File";
 
         public static void Serialize(string path, Instructor instructor, string extra)
@@ -50,11 +50,11 @@ namespace Photon.NeuralNetwork.Chista.Serializer
             byte[] buffer;
 
             // new version signal
-            buffer = BitConverter.GetBytes(SECTION_START_SIGNAL); // 2-bytes
+            buffer = BitConverter.GetBytes(SectionType.SECTION_START_SIGNAL); // 2-bytes
             stream.Write(buffer, 0, buffer.Length);
 
             // serialize section type
-            buffer = BitConverter.GetBytes(SECTION_TYPE); // 1-bytes
+            buffer = new byte[] { SECTION_TYPE }; // 1-bytes
             stream.Write(buffer, 0, buffer.Length);
 
             // serialize version
@@ -111,7 +111,7 @@ namespace Photon.NeuralNetwork.Chista.Serializer
             var file_type_signature = SectionType.ReadSigniture(stream, Encoding.ASCII);
 
             if (file_type_signature != FILE_TYPE_SIGNATURE_STRING)
-                throw new Exception("Invalid nnp file signature");
+                throw new Exception($"Invalid nnp file signature ({file_type_signature}).");
 
             // restore file
             var process = Restore(stream);
@@ -128,31 +128,31 @@ namespace Photon.NeuralNetwork.Chista.Serializer
         public static LearningProcessInfo Restore(FileStream stream)
         {
             if (stream == null)
-                throw new ArgumentNullException(nameof(stream), "The writer stream is not defined");
+                throw new ArgumentNullException(nameof(stream), "The writer stream is not defined.");
 
             // 1: read version: 2-bytes
             var buffer = new byte[2];
 
             stream.Read(buffer, 0, buffer.Length);
             var signal = BitConverter.ToUInt16(buffer, 0);
-            if (signal != SECTION_START_SIGNAL)
-                throw new Exception("Invalid section start signal");
+            if (signal != SectionType.SECTION_START_SIGNAL)
+                throw new Exception($"Invalid section start signal ({signal}).");
 
             stream.Read(buffer, 0, 1);
             var section_type = buffer[0];
             if (section_type != SECTION_TYPE)
-                throw new Exception("Invalid nnp section type");
+                throw new Exception($"Invalid nnp section type ({section_type}).");
 
             stream.Read(buffer, 0, buffer.Length);
             var version = BitConverter.ToUInt16(buffer, 0);
 
             if (version <= 8)
-                throw new Exception("This version of nnp is not supported any more.");
+                throw new Exception($"This version ({version}) of nnp is not supported any more.");
 
             return version switch
             {
                 VERSION => RestoreLastVersion(stream),
-                _ => throw new Exception("This version of nnp list is not supported"),
+                _ => throw new Exception($"This version ({version}) of nnp list is not supported."),
             };
         }
         private static LearningProcessInfo RestoreLastVersion(FileStream stream)
@@ -174,14 +174,14 @@ namespace Photon.NeuralNetwork.Chista.Serializer
             process_info.Processes = new List<INetProcess>(count);
 
             for (var i = 0; i < count; i++)
-                process_info.Processes.Add(NetProcessSerializer.Restor(stream));
+                process_info.Processes.Add(NetProcessSerializer.Restore(stream));
 
             stream.Read(buffer, 0, 4);
             count = BitConverter.ToInt32(buffer, 0);
             process_info.OutOfLines = new List<INetProcess>(count);
 
             for (var i = 0; i < count; i++)
-                process_info.OutOfLines.Add(NetProcessSerializer.Restor(stream));
+                process_info.OutOfLines.Add(NetProcessSerializer.Restore(stream));
 
             return process_info;
         }

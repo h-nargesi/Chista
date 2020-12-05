@@ -55,7 +55,7 @@ namespace Photon.NeuralNetwork.Chista.Serializer
         public static Layer[] Restore(FileStream stream)
         {
             if (stream == null)
-                throw new ArgumentNullException(nameof(stream), "The writer stream is not defined");
+                throw new ArgumentNullException(nameof(stream), "The writer stream is not defined.");
 
             // 1: read version: 2-bytes
             var buffer = new byte[2];
@@ -64,9 +64,9 @@ namespace Photon.NeuralNetwork.Chista.Serializer
 
             return version switch
             {
-                1 => throw new Exception("The 1st version of nni is not supported any more."),
+                1 => throw new Exception($"The 1st version ({version}) of nni is not supported any more."),
                 VERSION => RestoreLastVersion(stream),
-                _ => throw new Exception("This version of nni is not supported"),
+                _ => throw new Exception($"This version ({version}) of nni is not supported."),
             };
         }
         private static Layer[] RestoreLastVersion(FileStream stream)

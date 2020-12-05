@@ -9,7 +9,7 @@ namespace Photon.NeuralNetwork.Chista.Serializer
     public static class NeuralNetworkLineSerializer
     {
         public const byte SECTION_TYPE = 3;
-        public const ushort VERSION = 1, SECTION_START_SIGNAL = 0xFFFF;
+        public const ushort VERSION = 1;
         public const string FILE_TYPE_SIGNATURE_STRING = "Chista Neural Network Line Image";
 
         public static void Serialize(string path, NeuralNetworkLineImage image)
@@ -39,11 +39,11 @@ namespace Photon.NeuralNetwork.Chista.Serializer
             byte[] buffer;
 
             // new version signal
-            buffer = BitConverter.GetBytes(SECTION_START_SIGNAL); // 2-bytes
+            buffer = BitConverter.GetBytes(SectionType.SECTION_START_SIGNAL); // 2-bytes
             stream.Write(buffer, 0, buffer.Length);
 
             // serialize section type
-            buffer = BitConverter.GetBytes(SECTION_TYPE); // 1-bytes
+            buffer = new byte[] { SECTION_TYPE }; // 1-bytes
             stream.Write(buffer, 0, buffer.Length);
 
             // serialize version
@@ -80,7 +80,7 @@ namespace Photon.NeuralNetwork.Chista.Serializer
             // read file signature
             var file_type_signature = SectionType.ReadSigniture(stream, Encoding.ASCII);
             if (file_type_signature != FILE_TYPE_SIGNATURE_STRING)
-                throw new Exception("Invalid nnli file signature");
+                throw new Exception($"Invalid nnli file signature ({file_type_signature}).");
 
             // restore file
             return Restore(stream);
@@ -95,13 +95,13 @@ namespace Photon.NeuralNetwork.Chista.Serializer
 
             stream.Read(buffer, 0, buffer.Length);
             var signal = BitConverter.ToUInt16(buffer, 0);
-            if (signal != SECTION_START_SIGNAL)
-                throw new Exception("Invalid section start signal");
+            if (signal != SectionType.SECTION_START_SIGNAL)
+                throw new Exception($"Invalid section start signal ({signal}).");
 
             stream.Read(buffer, 0, 1);
             var section_type = buffer[0];
             if (section_type != SECTION_TYPE)
-                throw new Exception("Invalid nnli section type");
+                throw new Exception($"Invalid nnli section type ({section_type}).");
 
             stream.Read(buffer, 0, buffer.Length);
             var version = BitConverter.ToUInt16(buffer, 0);
@@ -109,7 +109,7 @@ namespace Photon.NeuralNetwork.Chista.Serializer
             return version switch
             {
                 VERSION => RestoreLastVersion(stream),
-                _ => throw new Exception("This version of nni is not supported."),
+                _ => throw new Exception($"This version ({version}) of nni is not supported."),
             };
         }
         private static NeuralNetworkLineImage RestoreLastVersion(FileStream stream)
@@ -122,7 +122,7 @@ namespace Photon.NeuralNetwork.Chista.Serializer
             stream.Read(buffer, 0, buffer.Length);
             var length = BitConverter.ToUInt16(buffer, 0);
 
-            if (length < 1) throw new Exception("Invalid length of images.");
+            if (length < 1) throw new Exception("The length of images must be greater than zero.");
 
             var function = new FunctionSerializerCore(stream);
 
