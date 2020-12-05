@@ -122,7 +122,7 @@ namespace Photon.NeuralNetwork.Chista
         {
             /* THIS CODE IS COPEIED FROM 'NeuralNetworkLineImage'.'ToString()' BECAUSE OF PERFORMANCE */
             var buffer = new StringBuilder()
-                .Append("chista-nets:").Append(chista_nets.Length);
+                .Append("chista-nets(").Append(chista_nets.Length).Append("):");
             int i = 0;
             buffer.Append(chista_nets[i].InputCount).Append("x").Append(chista_nets[i].OutputCount);
             while (i < combiners.Length)
@@ -137,15 +137,13 @@ namespace Photon.NeuralNetwork.Chista
             /* THIS CODE IS COPEIED FROM 'NeuralNetworkLineImage'.'PrintInfo()' BECAUSE OF PERFORMANCE */
             var buffer = new StringBuilder("[chista-net line]");
 
-            buffer.Append("nets:").Append(chista_nets.Length);
+            buffer.Append("\n").Append("nets:").Append(chista_nets.Length);
             int i = 0;
-            buffer.Append("\n")
-                .Append(chista_nets[i].InputCount).Append("x").Append(chista_nets[i].OutputCount);
+            buffer.Append("\n").Append(chista_nets[i].ToString());
             while (i < combiners.Length)
             {
-                buffer.Append(">").Append(combiners[i++].ToString()).Append(">");
-                buffer.Append("\n")
-                    .Append(chista_nets[i].InputCount).Append("x").Append(chista_nets[i].OutputCount);
+                buffer.Append(" > ").Append(combiners[i++].ToString()).Append(" >");
+                buffer.Append("\n").Append(chista_nets[i].ToString());
             }
             return buffer.ToString();
         }

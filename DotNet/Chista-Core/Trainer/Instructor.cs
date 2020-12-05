@@ -176,11 +176,11 @@ namespace Photon.NeuralNetwork.Chista.Trainer
             try
             {
                 if (BestRunningProcess != null)
-                    buffer.Append("\n#best process\n")
+                    buffer.Append("\n#best_process\t")
                         .Append(BestRunningProcess.PrintInfo());
 
                 if (BestRunningOutOfLine != null)
-                    buffer.Append("\n#best out_of_line\n")
+                    buffer.Append("\n#best_out_of_line\t")
                         .Append(BestRunningOutOfLine.PrintInfo());
             }
             finally { process_locker.ReleaseReaderLock(); }

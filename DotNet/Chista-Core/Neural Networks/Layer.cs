@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text;
 using MathNet.Numerics.LinearAlgebra;
 
 namespace Photon.NeuralNetwork.Chista.Implement
@@ -117,6 +118,11 @@ namespace Photon.NeuralNetwork.Chista.Implement
             // return droped
             previous_droped = current_droped;
             current_droped = null;
+        }
+
+        public override string ToString()
+        {
+            return $"Layer[{Synapse.ColumnCount}x{Synapse.RowCount}].{Conduction}";
         }
     }
 }

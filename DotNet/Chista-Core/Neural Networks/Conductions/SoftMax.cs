@@ -10,11 +10,19 @@ namespace Photon.NeuralNetwork.Chista
         public Vector<double> Conduct(Vector<double> signal)
         {
             signal = signal.PointwiseExp();
+#if NAN_CHEK
+            ChistaNet.NanTest(signal);
+            ChistaNet.NanTest(signal / signal.Sum());
+#endif
             return signal / signal.Sum();
         }
         public Vector<double> Conduct(NeuralNetworkFlash flash, int layer)
         {
             var signal = flash.SignalsSum[layer].PointwiseExp();
+#if NAN_CHEK
+            ChistaNet.NanTest(signal);
+            ChistaNet.NanTest(signal / signal.Sum());
+#endif
             return signal / signal.Sum();
         }
         public Vector<double> ConductDerivative(NeuralNetworkFlash flash, int layer)

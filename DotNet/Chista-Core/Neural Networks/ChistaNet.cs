@@ -241,7 +241,7 @@ namespace Photon.NeuralNetwork.Chista
                 flash.SignalsSum[i] = layers[i].Synapse.Multiply(signals) + layers[i].Bias;
                 // apply sigmoind function on results
                 signals = layers[i].Conduction.Conduct(flash, i);
-#if NaN
+#if NAN_CHEK
                 NanTest(signals);
                 //flash.SignalsExtra[0][i]
 #endif
@@ -271,6 +271,11 @@ namespace Photon.NeuralNetwork.Chista
                 // prepare delta for next loop (previous layer)
                 delta = layers[i].Synapse.Transpose().Multiply(delta);
 
+#if NAN_CHEK
+                NanTest(delta_bias);
+                NanTest(delta_weight);
+                //flash.SignalsExtra[0][i]
+#endif
                 // apply bias and weights differances
                 layers[i].Bias += delta_bias;
                 layers[i].Synapse += delta_weight;
@@ -296,7 +301,7 @@ namespace Photon.NeuralNetwork.Chista
             flash.Accuracy = error_fnc.Accuracy(flash);
         }
 
-#if NaN_CHEK
+#if NAN_CHEK
         public static void NanTest(Layer layer)
         {
             NanTest(layer.Synapse);
@@ -325,6 +330,7 @@ namespace Photon.NeuralNetwork.Chista
                 .Append(layers[0].Synapse.ColumnCount);
             foreach (var l in layers)
                 buffer.Append("x").Append(l.Synapse.RowCount);
+            buffer.Append(": ").Append(layers[^1].Conduction);
             return buffer.ToString();
         }
         public string PrintInfo()

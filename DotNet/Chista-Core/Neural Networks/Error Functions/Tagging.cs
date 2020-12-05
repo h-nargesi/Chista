@@ -28,7 +28,7 @@ namespace Photon.NeuralNetwork.Chista
         }
         public double Accuracy(NeuralNetworkFlash prediction)
         {
-            return (prediction.InputSignals[^1] * 2 - 1).PointwiseAbs().Sum();
+            return (prediction.InputSignals[^1] * 2 - 1).PointwiseAbs().Sum() / prediction.InputSignals[^1].Count;
         }
 
         public override string ToString()

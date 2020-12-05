@@ -26,12 +26,16 @@ namespace Photon.NeuralNetwork.Chista
                     max_index = i;
                     max_value = output[i];
                 }
-            if (max_index >= 0) error[max_index] = 1 - output[max_index];
+
+            for (int i = 0; i < output.Count; i++)
+                if (i == max_index) error[max_index] = 1 - output[max_index];
+                else error[max_index] = -output[max_index];
+
             return Vector<double>.Build.DenseOfArray(error);
         }
         public double Accuracy(NeuralNetworkFlash prediction)
         {
-            return (prediction.InputSignals[^1] * 2 - 1).PointwiseAbs().Sum();
+            return (prediction.InputSignals[^1] * 2 - 1).PointwiseAbs().Sum() / prediction.InputSignals[^1].Count;
         }
 
         public override string ToString()
