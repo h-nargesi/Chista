@@ -88,6 +88,10 @@ namespace Photon.NeuralNetwork.Chista.Trainer
         {
             get { return history.StableNetImage?.Accuracy ?? 0; }
         }
+        public double ReportingAccuracy
+        {
+            get { return record_count < 1 ? StableAccuracy : RunningAccuracy; }
+        }
 
         public NetProcessInfo ProcessInfo()
         {
@@ -101,7 +105,7 @@ namespace Photon.NeuralNetwork.Chista.Trainer
         }
         public string PrintInfo()
         {
-            return $"{RunningChistaNet.PrintInfo()}\ncurrent accuracy: {RunningAccuracy}";
+            return $"{RunningChistaNet.PrintInfo()}\ncurrent accuracy: {RunningAccuracy}\nstable accuracy: {StableAccuracy}";
         }
     }
 }

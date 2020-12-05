@@ -25,6 +25,21 @@ namespace Photon.NeuralNetwork.Chista
         private readonly ChistaNet[] chista_nets;
         private readonly IDataCombiner[] combiners;
 
+        public double LearningFactor
+        {
+            get { return chista_nets[0].LearningFactor; }
+            set { foreach (var cn in chista_nets) cn.LearningFactor = value; }
+        }
+        public double CertaintyFactor
+        {
+            get { return chista_nets[0].CertaintyFactor; }
+            set { foreach (var cn in chista_nets) cn.CertaintyFactor = value; }
+        }
+        public double DropoutFactor
+        {
+            get { return chista_nets[0].DropoutFactor; }
+            set { foreach (var cn in chista_nets) cn.DropoutFactor = value; }
+        }
         public IReadOnlyList<ChistaNet> ChistaNets => chista_nets;
         public IReadOnlyList<IDataCombiner> Combiners => combiners;
         public int Index
@@ -72,10 +87,13 @@ namespace Photon.NeuralNetwork.Chista
         {
             lock (chista_nets)
             {
-                // get chista-net's output from frist net to previous chista-net
-                double[] result = index < 1 ? inputs : Stimulate(index - 1, ref inputs);
-                // combine the previous chista-nets' output with input
-                inputs = combiners[index - 1].Combine(result, inputs);
+                if (index > 0)
+                {
+                    // get chista-net's output from frist net to previous chista-net
+                    var result = Stimulate(index - 1, ref inputs);
+                    // combine the previous chista-nets' output with input
+                    inputs = combiners[index - 1].Combine(result, inputs);
+                }
                 // test last chista-net
                 return chista_nets[index].Test(inputs, values);
             }
@@ -84,10 +102,13 @@ namespace Photon.NeuralNetwork.Chista
         {
             lock (chista_nets)
             {
-                // get chista-nets output from frist net to previous net
-                double[] result = index < 1 ? inputs : Stimulate(index - 1, ref inputs);
-                // combine the previous chista-nets' output with input
-                inputs = combiners[index - 1].Combine(result, inputs);
+                if (index > 0)
+                {
+                    // get chista-net's output from frist net to previous chista-net
+                    var result = Stimulate(index - 1, ref inputs);
+                    // combine the previous chista-nets' output with input
+                    inputs = combiners[index - 1].Combine(result, inputs);
+                }
                 // test last chista-net
                 return chista_nets[index].Train(inputs, values);
             }
@@ -103,7 +124,7 @@ namespace Photon.NeuralNetwork.Chista
             var buffer = new StringBuilder()
                 .Append("chista-nets:").Append(chista_nets.Length);
             int i = 0;
-            buffer.Append(chista_nets[i].InputCount).Append("->").Append(chista_nets[i].OutputCount);
+            buffer.Append(chista_nets[i].InputCount).Append("x").Append(chista_nets[i].OutputCount);
             while (i < combiners.Length)
             {
                 buffer.Append(">").Append(combiners[i++].ToString()).Append(">");
@@ -116,10 +137,10 @@ namespace Photon.NeuralNetwork.Chista
             /* THIS CODE IS COPEIED FROM 'NeuralNetworkLineImage'.'PrintInfo()' BECAUSE OF PERFORMANCE */
             var buffer = new StringBuilder("[chista-net line]");
 
-            buffer.Append("chista-nets:").Append(chista_nets.Length);
+            buffer.Append("nets:").Append(chista_nets.Length);
             int i = 0;
             buffer.Append("\n")
-                .Append(chista_nets[i].InputCount).Append("->").Append(chista_nets[i].OutputCount);
+                .Append(chista_nets[i].InputCount).Append("x").Append(chista_nets[i].OutputCount);
             while (i < combiners.Length)
             {
                 buffer.Append(">").Append(combiners[i++].ToString()).Append(">");

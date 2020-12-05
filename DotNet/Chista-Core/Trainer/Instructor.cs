@@ -103,7 +103,6 @@ namespace Photon.NeuralNetwork.Chista.Trainer
                         if (prc.StableAccuracy < 0) prc.InitialChistaNet();
                     }
                 CheckBestRunningOutOfLine();
-                CheckBestStableOutOfLine();
 
                 Epoch = process_info.Epoch;
                 Stage = process_info.Stage;
@@ -117,7 +116,11 @@ namespace Photon.NeuralNetwork.Chista.Trainer
             if (!Stopped) throw new Exception("The process is not stoped.");
 
             process_locker.AcquireWriterLock(100);
-            try { processes.Add(new NetProcess(chits_net)); }
+            try
+            {
+                processes.Add(new NetProcess(chits_net));
+                CheckBestRunningProcess();
+            }
             finally { process_locker.ReleaseWriterLock(); }
         }
         public void RemoveRunningProgress(int index)
@@ -125,7 +128,11 @@ namespace Photon.NeuralNetwork.Chista.Trainer
             if (!Stopped) throw new Exception("The process is not stoped.");
 
             process_locker.AcquireWriterLock(100);
-            try { processes.RemoveAt(index); }
+            try
+            {
+                processes.RemoveAt(index);
+                CheckBestRunningProcess();
+            }
             finally { process_locker.ReleaseWriterLock(); }
         }
         public void AddOutOfLineProgress(INeuralNetworkImage image)
@@ -134,7 +141,11 @@ namespace Photon.NeuralNetwork.Chista.Trainer
             if (!Stopped) throw new Exception("The process is not stoped.");
 
             process_locker.AcquireWriterLock(100);
-            try { out_of_lines.Add(new NetProcess(image)); }
+            try
+            {
+                out_of_lines.Add(new NetProcess(image));
+                CheckBestRunningProcess();
+            }
             finally { process_locker.ReleaseWriterLock(); }
         }
         public void RemoveOutOfLine(int index)
@@ -142,7 +153,11 @@ namespace Photon.NeuralNetwork.Chista.Trainer
             if (!Stopped) throw new Exception("The process is not stoped.");
 
             process_locker.AcquireWriterLock(100);
-            try { out_of_lines.RemoveAt(index); }
+            try
+            {
+                out_of_lines.RemoveAt(index);
+                CheckBestRunningProcess();
+            }
             finally { process_locker.ReleaseWriterLock(); }
         }
         public string PrintInfo()
@@ -160,37 +175,13 @@ namespace Photon.NeuralNetwork.Chista.Trainer
             process_locker.AcquireReaderLock(-1);
             try
             {
-                if (processes.Count > 0)
-                {
-                    int best_index = -1, current_index = -1; double best_accuracy = -1;
-                    foreach (var prc in processes)
-                    {
-                        current_index++;
-                        if (best_accuracy >= prc.StableAccuracy) continue;
-
-                        best_accuracy = prc.StableAccuracy;
-                        best_index = current_index;
-                    }
-
+                if (BestRunningProcess != null)
                     buffer.Append("\n#best process\n")
-                        .Append(processes[best_index].PrintInfo());
-                }
+                        .Append(BestRunningProcess.PrintInfo());
 
-                if (out_of_lines.Count > 0)
-                {
-                    int best_index = -1, current_index = -1; double best_accuracy = -1;
-                    foreach (var prc in out_of_lines)
-                    {
-                        current_index++;
-                        if (best_accuracy >= prc.RunningAccuracy) continue;
-
-                        best_accuracy = prc.RunningAccuracy;
-                        best_index = current_index;
-                    }
-
+                if (BestRunningOutOfLine != null)
                     buffer.Append("\n#best out_of_line\n")
-                        .Append(out_of_lines[best_index].PrintInfo());
-                }
+                        .Append(BestRunningOutOfLine.PrintInfo());
             }
             finally { process_locker.ReleaseReaderLock(); }
 
@@ -401,7 +392,7 @@ namespace Photon.NeuralNetwork.Chista.Trainer
                 // it is safe to cancel
                 if (Canceling) break;
 
-                if (Offset % update_best_interval == 0)
+                if (Offset % update_best_interval == 0 || next_offset == 0)
                     CheckBestRunningProcess();
 
                 // call event
@@ -493,7 +484,7 @@ namespace Photon.NeuralNetwork.Chista.Trainer
                 // it is safe to cancel
                 if (Canceling) break;
 
-                if (Offset % update_best_interval == 0)
+                if (Offset % update_best_interval == 0 || next_offset == 0)
                     CheckBestRunningProcess();
 
                 // call event
@@ -542,14 +533,11 @@ namespace Photon.NeuralNetwork.Chista.Trainer
                 time_interval = DateTime.Now.Ticks - time_interval;
 
                 if (next_offset == 0)
-                {
                     foreach (var ool in out_of_lines)
                     {
                         ool.FinishCurrentState(false);
                         ool.ReleaseChistaNet();
                     }
-                    CheckBestStableOutOfLine();
-                }
 
                 // CAUTION don's cancel the process until this area
                 SetNewState(next_offset, next_stage);
@@ -557,7 +545,7 @@ namespace Photon.NeuralNetwork.Chista.Trainer
                 // it is safe to cancel
                 if (Canceling) break;
 
-                if (Offset % update_best_interval == 0)
+                if (Offset % update_best_interval == 0 || next_offset == 0)
                     CheckBestRunningOutOfLine();
 
                 // call event
@@ -570,7 +558,6 @@ namespace Photon.NeuralNetwork.Chista.Trainer
         #region Reporting
         public INetProcess BestRunningProcess { get; private set; }
         public INetProcess BestRunningOutOfLine { get; private set; }
-        public INetProcess BestStableOutOfLine { get; private set; }
 
         private int update_best_interval = 1000;
         protected int UPDATE_BEST_INTERVAL
@@ -586,27 +573,23 @@ namespace Photon.NeuralNetwork.Chista.Trainer
 
         public void CheckBestRunningProcess()
         {
-            if (BestRunningProcess == null && processes.Count > 0)
-                BestRunningProcess = processes[0];
+            BestRunningProcess = null;
+            if (processes.Count < 1) return;
+
+            BestRunningProcess = processes[0];
             foreach (var proc in processes)
-                if (BestRunningProcess.RunningAccuracy < proc.RunningAccuracy)
+                if (BestRunningProcess.ReportingAccuracy < proc.ReportingAccuracy)
                     BestRunningProcess = proc;
         }
         public void CheckBestRunningOutOfLine()
         {
-            if (BestRunningOutOfLine == null && out_of_lines.Count > 0)
-                BestRunningOutOfLine = out_of_lines[0];
+            BestRunningOutOfLine = null;
+            if (out_of_lines.Count < 1) return;
+
+            BestRunningOutOfLine = out_of_lines[0];
             foreach (var ool in out_of_lines)
-                if (BestRunningOutOfLine.RunningAccuracy < ool.RunningAccuracy)
+                if (BestRunningOutOfLine.ReportingAccuracy < ool.ReportingAccuracy)
                     BestRunningOutOfLine = ool;
-        }
-        public void CheckBestStableOutOfLine()
-        {
-            if (BestStableOutOfLine == null && out_of_lines.Count > 0)
-                BestStableOutOfLine = out_of_lines[0];
-            foreach (var ool in out_of_lines)
-                if (BestStableOutOfLine.StableAccuracy < ool.StableAccuracy)
-                    BestStableOutOfLine = ool;
         }
         #endregion
 

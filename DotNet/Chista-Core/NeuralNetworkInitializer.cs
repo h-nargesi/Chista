@@ -18,6 +18,9 @@ namespace Photon.NeuralNetwork.Chista
         private bool absolut_value = false;
         private IContinuousDistribution distribution = new Normal(0, 0.5);
 
+        private readonly List<NeuralNetworkImage> images = new List<NeuralNetworkImage>();
+        private readonly List<IDataCombiner> combiners = new List<IDataCombiner>();
+
         public NeuralNetworkInitializer SetInputSize(int input_count)
         {
             if (layers != null)
@@ -33,6 +36,9 @@ namespace Photon.NeuralNetwork.Chista
         public NeuralNetworkInitializer SetDistribution(
             IContinuousDistribution distribution, bool absolute = false)
         {
+            if (last_layer_input_count < 0)
+                throw new Exception("The layers are closed.");
+
             if (distribution != null)
                 this.distribution = distribution;
             absolut_value = absolute;
@@ -111,19 +117,62 @@ namespace Photon.NeuralNetwork.Chista
 
             return this;
         }
+        public NeuralNetworkInitializer SetDataCombiner(IDataCombiner combiner)
+        {
+            if (layers == null)
+                throw new Exception("The layers input is not set yet.");
 
-        public NeuralNetworkImage Image()
-        {
-            return new NeuralNetworkImage(layers.ToArray(),
-                error_func, in_cvrt, out_cvrt, regularization);
+            if (combiner == null) throw new ArgumentNullException(nameof(combiner));
+            combiners.Add(combiner);
+            images.Add(CloseCurrentImage());
+
+            return this;
         }
-        public ChistaNet ChistaNet(double learning, double certainty, double dropout)
+        private NeuralNetworkImage CloseCurrentImage()
         {
-            return new ChistaNet(Image())
+            var image = new NeuralNetworkImage(
+                layers.ToArray(),
+                error_func, in_cvrt, out_cvrt, regularization);
+
+            last_layer_input_count = 0;
+            layers = null;
+            error_func = null;
+            in_cvrt = out_cvrt = null;
+            regularization = null;
+
+            return image;
+        }
+
+        public INeuralNetworkImage Image()
+        {
+            if (layers != null)
+                images.Add(CloseCurrentImage());
+
+            if (images.Count == 1) return images[0];
+
+            else return new NeuralNetworkLineImage(images.ToArray(), combiners.ToArray(), 0);
+        }
+        public IChistaNet ChistaNet(double learning, double certainty, double dropout)
+        {
+            var image = Image();
+
+            return image switch
             {
-                LearningFactor = learning,
-                CertaintyFactor = certainty,
-                DropoutFactor = dropout
+                NeuralNetworkImage simple_image =>
+                    new ChistaNet(simple_image)
+                    {
+                        LearningFactor = learning,
+                        CertaintyFactor = certainty,
+                        DropoutFactor = dropout
+                    },
+                NeuralNetworkLineImage line_image =>
+                    new ChistaNetLine(line_image)
+                    {
+                        LearningFactor = learning,
+                        CertaintyFactor = certainty,
+                        DropoutFactor = dropout
+                    },
+                _ => throw new Exception("Invalid chista-net type"),
             };
         }
     }
