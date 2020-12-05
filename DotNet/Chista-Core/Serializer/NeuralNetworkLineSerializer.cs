@@ -66,7 +66,7 @@ namespace Photon.NeuralNetwork.Chista.Serializer
             for (int i = 0; i < image.combiners.Length;)
             {
                 function.Serialize(image.combiners[i++]);
-                NeuralNetworkSerializer.Serialize(stream, image.images[0]);
+                NeuralNetworkSerializer.Serialize(stream, image.images[i]);
             }
         }
 

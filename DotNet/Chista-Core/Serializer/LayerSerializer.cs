@@ -7,7 +7,7 @@ namespace Photon.NeuralNetwork.Chista.Serializer
 {
     static class LayerSerializer
     {
-        public const ushort VERSION = 2;
+        public const ushort VERSION = 3;
 
         public static void Serialize(FileStream stream, Layer[] layers)
         {
@@ -35,6 +35,7 @@ namespace Photon.NeuralNetwork.Chista.Serializer
 
             // serialize leyar's weights
             for (int l = 0; l < layers.Length; l++)
+            {
                 for (var i = 0; i < layers[l].Synapse.RowCount; i++)
                 {
                     buffer = BitConverter.GetBytes(layers[l].Bias[i]); // 8-bytes
@@ -44,12 +45,13 @@ namespace Photon.NeuralNetwork.Chista.Serializer
                         buffer = BitConverter.GetBytes(layers[l].Synapse[i, j]); // 8-bytes
                         stream.Write(buffer, 0, buffer.Length);
                     }
-
-                    // serialize conduction function
-                    buffer = BitConverter.GetBytes(
-                        FunctionSerializerCore.EnCodeIConduction(layers[l].Conduction)); // 2-bytes
-                    stream.Write(buffer, 0, buffer.Length);
                 }
+
+                // serialize conduction function
+                buffer = BitConverter.GetBytes(
+                    FunctionSerializerCore.EnCodeIConduction(layers[l].Conduction)); // 2-bytes
+                stream.Write(buffer, 0, buffer.Length);
+            }
         }
 
         public static Layer[] Restore(FileStream stream)
@@ -65,11 +67,56 @@ namespace Photon.NeuralNetwork.Chista.Serializer
             return version switch
             {
                 1 => throw new Exception($"The 1st version ({version}) of nni is not supported any more."),
+                2 => RestoreVersion2(stream),
                 VERSION => RestoreLastVersion(stream),
                 _ => throw new Exception($"This version ({version}) of nni is not supported."),
             };
         }
         private static Layer[] RestoreLastVersion(FileStream stream)
+        {
+            var buffer = new byte[8];
+
+            stream.Read(buffer, 0, 4);
+            var layer_size = new int[BitConverter.ToInt32(buffer, 0)];
+
+            int i;
+            for (i = 0; i < layer_size.Length; i++)
+            {
+                stream.Read(buffer, 0, 4);
+                layer_size[i] = BitConverter.ToInt32(buffer, 0);
+            }
+
+            var layers = new Layer[layer_size.Length - 1];
+            for (var l = 0; l < layers.Length; l++)
+            {
+                var synapsees = new double[layer_size[l + 1], layer_size[l]];
+                var bias = new double[layer_size[l + 1]];
+
+                for (i = 0; i < bias.Length; i++)
+                {
+                    stream.Read(buffer, 0, 8);
+                    bias[i] = BitConverter.ToDouble(buffer, 0);
+                    for (var j = 0; j < synapsees.GetLength(1); j++)
+                    {
+                        stream.Read(buffer, 0, 8);
+                        synapsees[i, j] = BitConverter.ToDouble(buffer, 0);
+                    }
+                }
+
+                stream.Read(buffer, 0, 2);
+                var conduction = FunctionSerializerCore.DecodeIConduction(
+                    BitConverter.ToUInt16(buffer, 0));
+
+                layers[l] = new Layer(conduction)
+                {
+                    Synapse = Matrix<double>.Build.DenseOfArray(synapsees),
+                    Bias = Vector<double>.Build.DenseOfArray(bias),
+                };
+            }
+
+            return layers;
+        }
+        private static Layer[] RestoreVersion2(FileStream stream)
         {
             var buffer = new byte[8];
 

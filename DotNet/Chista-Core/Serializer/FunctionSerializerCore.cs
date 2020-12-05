@@ -310,7 +310,7 @@ namespace Photon.NeuralNetwork.Chista.Serializer
                 Straight _ => 4,
                 SoftMax _=> 5,
                 _ => throw new ArgumentException(
-                    nameof(conduction), "this type of IConduction is not registered."),
+                    nameof(conduction), $"this type of IConduction is not registered. {conduction}"),
             };
         }
         [MethodImpl(MethodImplOptions.Synchronized)]
@@ -326,7 +326,7 @@ namespace Photon.NeuralNetwork.Chista.Serializer
                 4 => new Straight(),
                 5 => new SoftMax(),
                 _ => throw new ArgumentException(
-                    nameof(value), "this type of IConduction is not registered."),
+                    nameof(value), $"this type ({value}) of IConduction is not registered."),
             };
             all_conductions.Add(value, conduction);
             return conduction;
