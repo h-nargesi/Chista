@@ -1,3 +1,5 @@
+Cross-Entropy Loss:
+	Error = ∑ yi * log(ŷi)
 Error = ½ * (y - ŷ)²
 Δwi = -(∂Error / ∂wi)
 
