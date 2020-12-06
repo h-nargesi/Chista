@@ -19,7 +19,6 @@ namespace Photon.NeuralNetwork.Chista
 
         public Vector<double> ErrorCalculation(Vector<double> output, Vector<double> _)
         {
-            // TODO: implement
             var error = new double[output.Count];
             for (int i = 0; i < output.Count; i++)
                 if (output[i] >= MinAccept) error[i] = 1 - output[i];
