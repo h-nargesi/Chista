@@ -7,7 +7,8 @@ namespace Photon.NeuralNetwork.Chista
 {
     public class Straight : IConduction
     {
-        Dictionary<int, Vector<double>> vector_one = new Dictionary<int, Vector<double>>();
+        private static readonly Dictionary<int, Vector<double>> vector_one = 
+            new Dictionary<int, Vector<double>>();
 
         public int ExtraCount => 0;
         public Vector<double> Conduct(Vector<double> signal)

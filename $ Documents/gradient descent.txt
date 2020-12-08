@@ -1,6 +1,16 @@
-Cross-Entropy Loss:
-	Error = ∑ yi * log(ŷi)
+[cross-entropy loss]
+Error = ∑ yi * log(ŷi)
+
+[errorest]
 Error = ½ * (y - ŷ)²
+
+[soft-max]
+f(h) = e^h / ∑ e^hi
+𝛛 ƒ(hi) / 𝛛 ha = 
+if i = a => 𝛛 ƒ(hi) / 𝛛 ha = f(ha)(1 - f(ha))
+if i != a => 𝛛 ƒ(hi) / 𝛛 ha = -f(hi)f(ha)
+
+[weights change]
 Δwi = -(∂Error / ∂wi)
 
 [output layer]
