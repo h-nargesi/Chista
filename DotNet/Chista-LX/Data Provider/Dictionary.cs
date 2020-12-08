@@ -7,7 +7,7 @@ using Photon.NeuralNetwork.Chista.Trainer;
 
 namespace Photon.NeuralNetwork.Chista.Debug
 {
-    public class Dictionary : NeuralNetworkRunner, IDisposable
+    public class Dictionary : NetProcessRunner, IDisposable
     {
         private const int LAYER_COUBNT = 5;
         public const string NAME = "dic";

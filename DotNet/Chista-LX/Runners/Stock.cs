@@ -15,7 +15,7 @@ using Photon.NeuralNetwork.Chista.Debug.Tools;
 
 namespace Photon.NeuralNetwork.Chista.Debug
 {
-    public class Stock : NeuralNetworkRunner, IDisposable
+    public class Stock : NetProcessRunner, IDisposable
     {
         public const string NAME = "stk";
         public override string Name => NAME;

@@ -8,14 +8,15 @@ using System.Threading.Tasks;
 using Photon.NeuralNetwork.Chista.Debug.Config;
 using Photon.NeuralNetwork.Chista.Trainer;
 using Photon.NeuralNetwork.Chista.Serializer;
+using Photon.NeuralNetwork.Chista.Implement;
 
 namespace Photon.NeuralNetwork.Chista.Debug
 {
-    public abstract class NeuralNetworkRunner : Instructor
+    abstract class NetProcessRunner : Instructor
     {
         protected readonly RootConfigHandler setting;
 
-        public NeuralNetworkRunner(IDataProvider provider) : base(provider)
+        public NetProcessRunner(IDataProvider provider) : base(provider)
         {
             setting = new RootConfigHandler($"setting-{Name}.json");
         }
@@ -40,11 +41,11 @@ namespace Photon.NeuralNetwork.Chista.Debug
             if (!setting.Brain.Rebuild && File.Exists(setting.Brain.ImagesPath))
             {
                 Debugger.Console.WriteCommitLine("loading brain ... ");
-                TrainProcessSerializer.Restore(setting.Brain.ImagesPath, this);
+                LearningProcessSerializer.Restore(setting.Brain.ImagesPath);
 
                 // reset stage
                 var stage = setting.Process.Stage;
-                if (stage != null)
+                if (stage.HasValue)
                 {
                     Stage = stage.Value;
                     setting.Process.Stage = null;
@@ -70,7 +71,7 @@ namespace Photon.NeuralNetwork.Chista.Debug
 
                 var images = BrainInitializer();
                 foreach (var image in images)
-                    AddProgress(new Brain(image)
+                    AddRunningProgress(new ChistaNet(image)
                     {
                         LearningFactor = setting.Brain.LearningFactor,
                         CertaintyFactor = setting.Brain.CertaintyFactor,
@@ -115,7 +116,7 @@ namespace Photon.NeuralNetwork.Chista.Debug
             Debugger.Console.WriteCommitLine("storing brain's image ... ");
             if (string.IsNullOrWhiteSpace(setting.Brain.ImagesPath))
                 setting.Brain.ImagesPath = $"{Name}.nnp";
-            TrainProcessSerializer.Serialize(setting.Brain.ImagesPath, this);
+            LearningProcessSerializer.Serialize(setting.Brain.ImagesPath, this);
 
             setting.Save();
 

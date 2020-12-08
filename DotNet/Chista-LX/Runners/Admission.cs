@@ -10,7 +10,7 @@ using Photon.NeuralNetwork.Chista.Trainer;
 
 namespace Photon.NeuralNetwork.Chista.Debug
 {
-    public class Admission : IDataProvider
+    class Admission2 : NetProcessRunner
     {
         public int Slowness { get; set; } = 200;
         public override string Name => NAME;
@@ -81,7 +81,7 @@ namespace Photon.NeuralNetwork.Chista.Debug
 
             return Task.FromResult(new Record(data, result));
         }
-        protected override void ReflectFinished(Record record, long duration)
+        protected override void ReflectFinished(Record record, long duration, int running_code)
         {
             if (Offset == 0)
                 Debugger.Console.CommitLine();
@@ -147,6 +147,11 @@ namespace Photon.NeuralNetwork.Chista.Debug
         {
             Vector<double> vector = Vector<double>.Build.DenseOfArray(input);
             return (1 / (1 + (vector * -1).PointwiseExp())).ToArray();
+        }
+
+        protected override void OnFinished()
+        {
+            throw new NotImplementedException();
         }
     }
 }
