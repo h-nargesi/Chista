@@ -8,7 +8,7 @@ namespace Photon.NeuralNetwork.Chista
 {
     public class CrossEntropy : IErrorFunction
     {
-        public Vector<double> ErrorCalculation(Vector<double> output, Vector<double> values)
+        public Vector<double> NegativeErrorDerivative(Vector<double> output, Vector<double> values)
         {
             return ((1 - values) / (1 - output)) - (values / output);
         }

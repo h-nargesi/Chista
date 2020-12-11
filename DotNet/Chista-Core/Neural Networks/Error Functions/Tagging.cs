@@ -17,7 +17,7 @@ namespace Photon.NeuralNetwork.Chista
         public double MinAccept { get; }
         public double MaxReject { get; }
 
-        public Vector<double> ErrorCalculation(Vector<double> output, Vector<double> _)
+        public Vector<double> NegativeErrorDerivative(Vector<double> output, Vector<double> _)
         {
             var error = new double[output.Count];
             for (int i = 0; i < output.Count; i++)

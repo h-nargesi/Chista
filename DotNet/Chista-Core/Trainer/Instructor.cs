@@ -216,15 +216,15 @@ namespace Photon.NeuralNetwork.Chista.Trainer
 
                 try
                 {
+                    // initialize data-provider
+                    data_provider.Initialize();
+                    // initialize by developer
+                    OnInitialize();
+
                     process_locker.AcquireReaderLock(3000);
                     try
                     {
                         Stopped = false;
-
-                        // initialize data-provider
-                        data_provider.Initialize();
-                        // initialize by developer
-                        OnInitialize();
 
                         // check new out-of-line process
                         if (Stage == TrainingStages.Evaluation)
@@ -263,7 +263,6 @@ namespace Photon.NeuralNetwork.Chista.Trainer
                                     break;
                             }
                         }
-
                     }
                     finally
                     {
@@ -272,11 +271,10 @@ namespace Photon.NeuralNetwork.Chista.Trainer
 
                         record_geter?.Wait();
                         data_provider.Dispose();
-
-                        OnFinished();
                     }
                 }
                 catch (Exception ex) { OnError(ex); }
+                finally { OnFinished(); }
             });
         }
         public Task Evaluate()

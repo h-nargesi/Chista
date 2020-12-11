@@ -133,7 +133,7 @@ namespace Photon.NeuralNetwork.Chista
             // standardized signals
             if (out_cvrt != null) delta = out_cvrt.Standardize(delta);
             // calculate error and total error
-            delta = error_fnc.ErrorCalculation(flash.InputSignals[^1], delta);
+            delta = error_fnc.NegativeErrorDerivative(flash.InputSignals[^1], delta);
             // calculate total error of network result
             flash.SetErrors(delta);
             // check if is not any error then do not train the network
@@ -147,6 +147,7 @@ namespace Photon.NeuralNetwork.Chista
                 // if nodes are droped out then increase learning factor
                 if (DropoutFactor > 0) LearningFactor /= DropoutFactor;
                 // back-propagation
+                flash.Delta = delta;
                 BackPropagation(flash, delta);
             }
             finally
@@ -191,7 +192,7 @@ namespace Photon.NeuralNetwork.Chista
                 ForwardPropagation(flash, ref signals);
 
                 // calculate error and total error of network result
-                delta = error_fnc.ErrorCalculation(flash.InputSignals[^1], delta);
+                delta = error_fnc.NegativeErrorDerivative(flash.InputSignals[^1], delta);
                 // calculate total error of network result
                 flash.SetErrors(delta);
 
@@ -201,6 +202,7 @@ namespace Photon.NeuralNetwork.Chista
                     // if nodes are droped out then increase learning factor
                     if (DropoutFactor > 0) LearningFactor /= DropoutFactor;
                     // back-propagation
+                    flash.Delta = delta;
                     BackPropagation(flash, delta);
                 }
             }
@@ -290,7 +292,7 @@ namespace Photon.NeuralNetwork.Chista
             // standardized signals
             if (out_cvrt != null) delta = out_cvrt.Standardize(delta);
             // calculate error and total error of network result
-            error_fnc.ErrorCalculation(flash.InputSignals[^1], delta);
+            error_fnc.NegativeErrorDerivative(flash.InputSignals[^1], delta);
             // calculate total error of network result
             flash.SetErrors(delta);
         }

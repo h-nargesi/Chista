@@ -26,7 +26,7 @@ namespace Photon.NeuralNetwork.Chista.Deprecated
 
         public int IndexCount { get { return indexed.Count; } }
 
-        public Vector<double> ErrorCalculation(Vector<double> output, Vector<double> values)
+        public Vector<double> NegativeErrorDerivative(Vector<double> output, Vector<double> values)
         {
             return indexed.PointwiseMultiply(values - output);
         }

@@ -14,6 +14,7 @@ namespace Photon.NeuralNetwork.Chista
         }
 
         #region Forward Propagation
+        internal Vector<double> Delta;
         internal readonly Vector<double>[] SignalsSum;
         internal readonly Vector<double>[] InputSignals;
         internal readonly ExtraSignals SignalsExtra;

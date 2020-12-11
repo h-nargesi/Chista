@@ -6,6 +6,6 @@ namespace Photon.NeuralNetwork.Chista.Implement
 {
     public interface IErrorFunction : ISerializableFunction
     {
-        Vector<double> ErrorCalculation(Vector<double> output, Vector<double> values);
+        Vector<double> NegativeErrorDerivative(Vector<double> output, Vector<double> values);
     }
 }

@@ -8,7 +8,7 @@ namespace Photon.NeuralNetwork.Chista
 {
     public class Classification : IErrorFunction
     {
-        public Vector<double> ErrorCalculation(Vector<double> output, Vector<double> _)
+        public Vector<double> NegativeErrorDerivative(Vector<double> output, Vector<double> _)
         {
             var values = Vector<double>.Build.DenseOfArray(new double[output.Count]);
             var max_value = 0D;
