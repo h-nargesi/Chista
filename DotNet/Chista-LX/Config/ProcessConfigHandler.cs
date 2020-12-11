@@ -15,7 +15,7 @@ namespace Photon.NeuralNetwork.Chista.Debug.Config
         private const string process_offset = "offset";
         private const string process_left_time = "left-time-estimate-length";
 
-        public TraingingStages? Stage
+        public TrainingStages? Stage
         {
             get
             {
@@ -23,8 +23,8 @@ namespace Photon.NeuralNetwork.Chista.Debug.Config
                 if (str == null) return null;
 
                 str = str.ToLower();
-                str = char.ToUpper(str[0]) + str.Substring(1);
-                return (TraingingStages)Enum.Parse(typeof(TraingingStages), str);
+                str = char.ToUpper(str[0]) + str[1..];
+                return (TrainingStages)Enum.Parse(typeof(TrainingStages), str);
             }
             set { SetSetting(process_stage, value?.ToString().ToLower()); }
         }

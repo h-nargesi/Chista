@@ -6,7 +6,7 @@
     <RootNamespace>Photon.NeuralNetwork.Chista.Debug</RootNamespace>
     <AssemblyName>chista</AssemblyName>
     <LangVersion>8.0</LangVersion>
-    <Version>4.9.122</Version>
+    <Version>5.0.123</Version>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">

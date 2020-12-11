@@ -24,7 +24,7 @@ namespace Photon.NeuralNetwork.Chista.Debug
                     param = args.Length > 1 ? args[1] : null;
 
                     if (param != null && param.StartsWith("-"))
-                        param = param.Substring(1);
+                        param = param[1..];
                 }
                 else process = param = null;
 
@@ -39,7 +39,7 @@ namespace Photon.NeuralNetwork.Chista.Debug
                         if (param != null)
                         {
                             if (param.StartsWith("\""))
-                                param = param.Substring(1);
+                                param = param[1..];
                             if (param.EndsWith("\""))
                                 param = param.Remove(param.Length - 1);
                         }
@@ -49,16 +49,13 @@ namespace Photon.NeuralNetwork.Chista.Debug
                         break;
 
                     case Admission.NAME:
-                        using (var adm = new Admission())
-                            adm.Start();
+                        new Admission().Start();
                         break;
                     case Dictionary.NAME:
-                        using (var dic = new Dictionary())
-                            dic.Start();
+                       new Dictionary().Start();
                         break;
-                    case Stock.NAME:
-                        using (var dic = new Stock())
-                            dic.Start();
+                    case LinePrediction.NAME:
+                        new LinePrediction().Start();
                         break;
 
                     default:

@@ -79,28 +79,7 @@ namespace Photon.NeuralNetwork.Chista.Debug
                     });
             }
         }
-        private NeuralNetworkImage[] BrainInitializer()
-        {
-            var conduction = setting.Brain.Layers.Conduction;
-            var layers = setting.Brain.Layers.NodesCount;
-            if (layers == null || layers.Length == 0)
-            {
-                setting.Brain.Layers.NodesCount = new int[0];
-                throw new Exception("the default layer's node count is not set.");
-            }
-
-            var image = new NeuralNetworkInitializer()
-                .SetInputSize(2)
-                .AddLayer(conduction == "soft-relu" ? (IConduction)new SoftReLU() : new ReLU(), layers)
-                .AddLayer(new Sigmoind(), 1)
-                .SetCorrection(new Errorest())
-                .SetDataConvertor(
-                    new DataRange(SignalRange, SignalHeight),
-                    new DataRange(SignalRange * 2, SignalRange))
-                .Image();
-
-            return new NeuralNetworkImage[] { image };
-        }
+        protected abstract NeuralNetworkImage[] BrainInitializer();
         protected override void OnError(Exception ex)
         {
             Debugger.Console.WriteCommitLine(ex.Message);

@@ -5,43 +5,32 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using MathNet.Numerics.LinearAlgebra;
+using Photon.NeuralNetwork.Chista.Debug.Tools;
 using Photon.NeuralNetwork.Chista.Implement;
 using Photon.NeuralNetwork.Chista.Trainer;
 
 namespace Photon.NeuralNetwork.Chista.Debug
 {
-    class Admission2 : NetProcessRunner
+    class Admission : NetProcessRunner
     {
         public int Slowness { get; set; } = 200;
         public override string Name => NAME;
 
         public const string NAME = "adm";
         private const int SignalRange = 100, SignalHeight = 0;
-
         private string print = "";
-        private readonly Random random = new Random(DateTime.Now.Millisecond);
+
+        public Admission() : base(new DigitDataProvider()) { }
 
         protected override void OnInitialize()
         {
             setting.Brain.ImagesPathDefault = "";
             base.OnInitialize();
 
-            string print = null;
-            var image = Processes[0].Brain.Image();
-            for (var i = 0; i < image.layers.Length; i++)
-            {
-                print += Print(image.layers[i].Bias.ToArray());
-                print += Print(image.layers[i].Synapse.ToArray());
-                print += "\r\n";
-            }
-
-            Debugger.Console.WriteCommitLine(print);
+            Debugger.Console.WriteCommitLine(Processes[0].RunningChistaNet.Image().PrintInfo());
 
             Epoch = 0;
             Offset = 0;
-            TrainingCount = 128;
-            ValidationCount = 0;
-            EvaluationCount = 0;
         }
         protected override NeuralNetworkImage[] BrainInitializer()
         {
@@ -55,31 +44,13 @@ namespace Photon.NeuralNetwork.Chista.Debug
 
             var image = new NeuralNetworkInitializer()
                 .SetInputSize(2)
-                .AddLayer(conduction == "soft-relu" ? (IConduction)new SoftReLU() : new ReLU(), layers)
-                .AddLayer(new Sigmoind(), 1)
-                .SetCorrection(new Errorest())
-                .SetDataConvertor(
-                    new DataRange(SignalRange, SignalHeight),
-                    new DataRange(SignalRange * 2, SignalRange))
+                .AddLayer(FunctionDecoder.Conduction(conduction), layers)
+                .AddLayer(new SoftMax(), 1)
+                .SetCorrection(new CrossEntropy())
+                .SetDataConvertor(new DataRange(SignalRange, SignalHeight), null)
                 .Image();
 
-            return new NeuralNetworkImage[] { image };
-        }
-        protected override Task<Record> PrepareNextData(uint offset, TraingingStages stage)
-        {
-            double[] data = new double[] {
-                random.NextDouble() * SignalRange * 2 - SignalRange,
-                random.NextDouble() * SignalRange * 2 - SignalRange
-            };
-
-            double[] result = new double[] {
-                (
-                    (data[0] * 8 + data[1] * 2 - 2) * 3 +
-                    (data[0] * 3 + data[1] * 7 - 1) * 1 + 7
-                ) / 40
-            };
-
-            return Task.FromResult(new Record(data, result));
+            return new NeuralNetworkImage[] { (NeuralNetworkImage)image };
         }
         protected override void ReflectFinished(Record record, long duration, int running_code)
         {
@@ -91,14 +62,14 @@ namespace Photon.NeuralNetwork.Chista.Debug
                 Debugger.Console.WriteWord(print);
             }
 
-            var accuracy = Processes[0].CurrentAccuracy;
-            var predict = Processes[0].LastPredict;
+            var accuracy = Processes[0].RunningAccuracy;
+            var predict = Processes[0].LastPrediction;
 
             print = $"#{Offset} = ";
             print += $"result:{Print(record.result, 6)}\t";
             print += $"output:{Print(predict.ResultSignals, 6)}\t";
             print += $"accuracy:{Print(accuracy * 100, 2)}\t";
-            print += $"error:{Print(Processes[0].Brain.Errors(predict, record.result), null)}\r\n";
+            print += $"error:{predict.ErrorAverage}\r\n";
 
             /*var image = Brain.Image();
             for (var i = 0; i < image.layers.Length; i++)
@@ -138,6 +109,7 @@ namespace Photon.NeuralNetwork.Chista.Debug
             }
             while (!Stopped);
         }
+        protected override void OnFinished() { }
 
         private double Sigmoind(double input)
         {
@@ -149,9 +121,49 @@ namespace Photon.NeuralNetwork.Chista.Debug
             return (1 / (1 + (vector * -1).PointwiseExp())).ToArray();
         }
 
-        protected override void OnFinished()
+
+        private class DigitDataProvider : IDataProvider
         {
-            throw new NotImplementedException();
+            private readonly Random random = new Random(DateTime.Now.Millisecond);
+
+            public uint TrainingCount => 128;
+            public uint ValidationCount => 0;
+            public uint EvaluationCount => 0;
+
+            public void Dispose() { }
+            public void Initialize() { }
+
+            public Task<Record> PrepareNextData(uint progress, TrainingStages stage)
+            {
+                double[] data = new double[] {
+                    random.NextDouble() * SignalRange * 2 - SignalRange,
+                    random.NextDouble() * SignalRange * 2 - SignalRange
+                };
+
+                double result;
+                if (data[0] < -SignalRange * 0.5 &&
+                    data[1] < -SignalRange * 0.4) result = 1;
+                else
+                {
+                    var c = Math.Sqrt(
+                        Math.Pow(SignalRange - data[0], 2) +
+                        Math.Pow(SignalRange - data[1], 2));
+
+                    if (c <= SignalRange) result = 1;
+                    else result = 0;
+                }
+
+                return Task.FromResult(new Record(data, new double[] { result }));
+            }
+
+            public string PrintInfo()
+            {
+                return ToString();
+            }
+            public override string ToString()
+            {
+                return "DigitDataProvider";
+            }
         }
     }
 }

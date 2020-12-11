@@ -4,34 +4,22 @@ using System.Text.RegularExpressions;
 using System.Data.SQLite;
 using System.Threading.Tasks;
 using Photon.NeuralNetwork.Chista.Trainer;
+using Photon.NeuralNetwork.Chista.Debug.Config;
 
 namespace Photon.NeuralNetwork.Chista.Debug
 {
-    public class Dictionary : NetProcessRunner, IDisposable
+    class Dictionary : NetProcessRunner
     {
         private const int LAYER_COUBNT = 5;
         public const string NAME = "dic";
-        private SQLiteCommand sqlite;
-        private const string sql_selection =
-            "select * from En_Pr order by lower(English) limit 1 offset ";
         private string print = "";
         public override string Name => NAME;
 
-        protected override void OnInitialize()
+        public Dictionary() : base(new WordsDataProvider())
         {
-            base.OnInitialize();
-
-            sqlite = new SQLiteCommand(new SQLiteConnection(setting.DataProvider));
-            sqlite.Connection.Open();
-
-            sqlite.CommandText = "select count(*) from En_Pr";
-            using var reader = sqlite.ExecuteReader();
-            if (reader.Read()) TrainingCount = (uint)(long)reader[0];
-            else throw new Exception("The unkown count.");
-
-            ValidationCount = 0;
-            EvaluationCount = 0;
+            ((WordsDataProvider)DataProvider).Setting = setting;
         }
+
         protected override NeuralNetworkImage[] BrainInitializer()
         {
             var relu = new SoftReLU();
@@ -45,39 +33,7 @@ namespace Photon.NeuralNetwork.Chista.Debug
                 .SetCorrection(new Errorest())
                 .SetDataConvertor(new DataRange(128, -128), new DataRange(255, 0));
 
-            return new NeuralNetworkImage[] { init.Image() };
-        }
-        protected async override Task<Record> PrepareNextData(uint offset, TraingingStages stage)
-        {
-            byte[] result = null, data = null;
-            string result_str = null, data_str = null;
-
-            sqlite.CommandText = sql_selection + offset;
-            using (var reader = await sqlite.ExecuteReaderAsync())
-            {
-                if (reader.Read())
-                {
-                    data_str = reader[0] as string;
-                    if (string.IsNullOrEmpty(data_str)) return null;
-                    else
-                    {
-                        data = Encoding.ASCII.GetBytes(data_str);
-
-                        if (data.Length > 20) return null;
-
-                        result_str = reader[1] as string;
-                        if (!string.IsNullOrEmpty(result_str))
-                        {
-                            result = Encoding.UTF8.GetBytes(result_str);
-                            if (result.Length > 40) return null;
-                        }
-                    }
-                }
-                else return null;
-            }
-
-            return new Record(
-                Sense(data, 20), Sense(result, 40), new string[] { data_str, result_str });
+            return new NeuralNetworkImage[] { (NeuralNetworkImage)init.Image() };
         }
         protected double[] CheckResultValidation(NeuralNetworkFlash flash, Record record)
         {
@@ -97,7 +53,7 @@ namespace Photon.NeuralNetwork.Chista.Debug
 
             return record.result;
         }
-        protected override void ReflectFinished(Record record, long duration)
+        protected override void ReflectFinished(Record record, long duration, int running_code)
         {
             if (Offset == 0)
             {
@@ -109,6 +65,7 @@ namespace Photon.NeuralNetwork.Chista.Debug
                 Debugger.Console.WriteWord($"{Offset}: {extra[0]}");
             }
         }
+        protected override void OnFinished() { }
 
         public void IgnoreUnnecessary(double[] answer, double[] result)
         {
@@ -116,14 +73,6 @@ namespace Photon.NeuralNetwork.Chista.Debug
             for (int i = 0; i < answer.Length; i++)
                 if (first_zero) answer[i] = result[i];
                 else if (answer[i] == 0) first_zero = true;
-        }
-        public double[] Sense(byte[] data, int size)
-        {
-            if (data == null) return null;
-            var result = new double[size];
-            var i = 0;
-            foreach (var d in data) result[i++] = d;
-            return result;
         }
         public byte[] Action(double[] signals)
         {
@@ -184,23 +133,100 @@ namespace Photon.NeuralNetwork.Chista.Debug
             return result.ToString();
         }
 
-        protected override void OnStopped()
-        {
-            base.OnStopped();
-
-            if (sqlite != null)
-            {
-                var connection = sqlite.Connection;
-                sqlite.Dispose();
-                connection?.Dispose();
-                sqlite = null;
-            }
-        }
-
         private void Clear()
         {
             print = Regex.Replace(print, "[^ \t\r\n]", " ");
             Debugger.Console.WriteWord(print);
+        }
+
+        private class WordsDataProvider : IDataProvider
+        {
+            private SQLiteCommand sqlite;
+            private const string sql_selection =
+                "select * from En_Pr order by lower(English) limit 1 offset ";
+
+            public uint TrainingCount { get; private set; }
+            public uint ValidationCount { get; private set; }
+            public uint EvaluationCount { get; private set; }
+            public RootConfigHandler Setting { get; set; }
+
+            public void Initialize()
+            {
+
+                sqlite = new SQLiteCommand(new SQLiteConnection(Setting.DataProvider));
+                sqlite.Connection.Open();
+
+                sqlite.CommandText = "select count(*) from En_Pr";
+                using var reader = sqlite.ExecuteReader();
+                if (reader.Read()) TrainingCount = (uint)(long)reader[0];
+                else throw new Exception("The unkown count.");
+
+                ValidationCount = 0;
+                EvaluationCount = 0;
+            }
+            public void Dispose()
+            {
+                if (sqlite != null)
+                {
+                    var connection = sqlite.Connection;
+                    sqlite.Dispose();
+                    connection?.Dispose();
+                    sqlite = null;
+                }
+            }
+
+            public async Task<Record> PrepareNextData(uint progress, TrainingStages stage)
+            {
+                var start = DateTime.Now.Ticks;
+                byte[] result = null, data = null;
+                string result_str = null, data_str = null;
+
+                sqlite.CommandText = sql_selection + progress;
+                using (var reader = await sqlite.ExecuteReaderAsync())
+                {
+                    if (reader.Read())
+                    {
+                        data_str = reader[0] as string;
+                        if (string.IsNullOrEmpty(data_str)) return null;
+                        else
+                        {
+                            data = Encoding.ASCII.GetBytes(data_str);
+
+                            if (data.Length > 20) return null;
+
+                            result_str = reader[1] as string;
+                            if (!string.IsNullOrEmpty(result_str))
+                            {
+                                result = Encoding.UTF8.GetBytes(result_str);
+                                if (result.Length > 40) return null;
+                            }
+                        }
+                    }
+                    else return null;
+                }
+
+                return new Record(
+                    Sense(data, 20), Sense(result, 40), DateTime.Now.Ticks - start,
+                    new string[] { data_str, result_str });
+            }
+            public double[] Sense(byte[] data, int size)
+            {
+                if (data == null) return null;
+                var result = new double[size];
+                var i = 0;
+                foreach (var d in data) result[i++] = d;
+                return result;
+            }
+
+            public string PrintInfo()
+            {
+                return ToString();
+            }
+            public override string ToString()
+            {
+                return "WordsDataProvider";
+            }
+
         }
     }
 }
