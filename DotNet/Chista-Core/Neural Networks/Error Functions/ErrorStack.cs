@@ -30,10 +30,6 @@ namespace Photon.NeuralNetwork.Chista.Deprecated
         {
             return indexed.PointwiseMultiply(values - output);
         }
-        public double Accuracy(NeuralNetworkFlash prediction)
-        {
-            return 1 - prediction.ErrorAverage;
-        }
 
         public override string ToString()
         {

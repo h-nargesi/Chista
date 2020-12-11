@@ -1,14 +1,16 @@
 [cross-entropy loss]
-Error = ∑ yi * log(ŷi)
+Error = ∑ (yi * log(ŷi) + (1-yi) * log(1-ŷi))
+∂Error / ∂ŷ = y - ŷ
 
 [errorest]
-Error = ½ * (y - ŷ)²
+Error = 1/M ∑M ½ * (yi - ŷi)²
+∂Error / ∂ŷ = 1/M ∑M (yi - ŷi)
 
 [soft-max]
 f(h) = e^h / ∑ e^hi
-𝛛 ƒ(hi) / 𝛛 ha = 
-if i = a => 𝛛 ƒ(hi) / 𝛛 ha = f(ha)(1 - f(ha))
-if i != a => 𝛛 ƒ(hi) / 𝛛 ha = -f(hi)f(ha)
+∂ ƒ(hi) / ∂ ha = 
+if i = a => ∂ ƒ(hi) / ∂ ha = f(ha)(1 - f(ha))
+if i != a => ∂ ƒ(hi) / ∂ ha = -f(hi)f(ha)
 
 [weights change]
 Δwi = -(∂Error / ∂wi)

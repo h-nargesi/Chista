@@ -26,11 +26,12 @@ namespace Photon.NeuralNetwork.Chista
             Errors = errors.ToArray();
             TotalError = errors.PointwiseAbs().Sum();
             ErrorAverage = errors.Count > 0 ? TotalError / errors.Count : 0;
+            Accuracy = 1 - ErrorAverage;
         }
         public double[] Errors { get; private set; }
         public double TotalError { get; private set; }
         public double ErrorAverage { get; private set; }
-        public double Accuracy { get; internal set; }
+        public double Accuracy { get; private set; }
         #endregion
 
         public override string ToString()

@@ -1,21 +1,21 @@
-using System;
+﻿using System;
+using System.Collections.Generic;
+using System.Text;
 using MathNet.Numerics.LinearAlgebra;
 using Photon.NeuralNetwork.Chista.Implement;
 
 namespace Photon.NeuralNetwork.Chista
 {
-    public class Errorest : IErrorFunction
+    public class CrossEntropy : IErrorFunction
     {
         public Vector<double> ErrorCalculation(Vector<double> output, Vector<double> values)
         {
-            // TODO: use wight to loose certainty
-            // error equals to: (true_value - network_output)
-            return values - output;
+            return ((1 - values) / (1 - output)) - (values / output);
         }
 
         public override string ToString()
         {
-            return "Errorest";
+            return $"CrossEntropy";
         }
     }
 }

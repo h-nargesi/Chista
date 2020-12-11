@@ -21,13 +21,9 @@ namespace Photon.NeuralNetwork.Chista
         {
             var error = new double[output.Count];
             for (int i = 0; i < output.Count; i++)
-                if (output[i] >= MinAccept) error[i] = 1 - output[i];
-                else if (output[i] <= MaxReject) error[i] = 0 - output[i];
+                if (output[i] <= MaxReject) error[i] = output[i];
+                else if (output[i] >= MinAccept) error[i] = 1 - output[i];
             return Vector<double>.Build.DenseOfArray(error);
-        }
-        public double Accuracy(NeuralNetworkFlash prediction)
-        {
-            return (prediction.InputSignals[^1] * 2 - 1).PointwiseAbs().Sum() / prediction.InputSignals[^1].Count;
         }
 
         public override string ToString()
