@@ -41,26 +41,38 @@ namespace Photon.NeuralNetwork.Chista.Trainer
         public uint EpochMax { get; set; }
         private (uint progress, TrainingStages stage) GetNextRound()
         {
+            var next_stage = Stage;
             var progress = Offset + 1;
-            switch (Stage)
+            var i = 0;
+            while (i++ <= 3)
             {
-                case TrainingStages.Training:
-                    if (progress >= data_provider.TrainingCount)
-                        return (0, TrainingStages.Validation);
-                    else return (progress, Stage);
+                switch (next_stage)
+                {
+                    case TrainingStages.Training:
+                        if (progress < data_provider.TrainingCount)
+                            return (progress, Stage);
+                        break;
 
-                case TrainingStages.Validation:
-                    if (progress >= data_provider.ValidationCount)
-                        return (0, TrainingStages.Evaluation);
-                    else return (progress, Stage);
+                    case TrainingStages.Validation:
+                        if (progress < data_provider.ValidationCount)
+                            return (progress, Stage);
+                        break;
 
-                case TrainingStages.Evaluation:
-                    if (progress >= data_provider.EvaluationCount)
-                        return (0, TrainingStages.Training);
-                    else return (progress, Stage);
+                    case TrainingStages.Evaluation:
+                        if (progress < data_provider.EvaluationCount)
+                            return (progress, Stage);
+                        break;
 
-                default: throw new Exception($"Invalid stage! ({Stage})");
+                    default: throw new Exception($"Invalid stage! ({Stage})");
+                }
+
+                progress = 0;
+                if (next_stage >= TrainingStages.Evaluation)
+                    next_stage = TrainingStages.Training;
+                else next_stage++;
             }
+
+            throw new Exception("All of stages' size are zero.");
         }
         private void SetNewState(uint progress, TrainingStages stage)
         {

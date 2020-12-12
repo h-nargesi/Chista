@@ -26,8 +26,8 @@ namespace Photon.NeuralNetwork.Chista
 
             for (int i = signal.Count - 1; i >= 0; i--)
                 for (int j = i; j >= 0; j--)
-                    if (i == j) derivaite[i, i] = (1 - signal[i]);
-                    else derivaite[i, j] = derivaite[j, i] = -signal[j] * flash.Delta[i];
+                    if (i == j) derivaite[i, i] = signal[i] * (1 - signal[i]);
+                    else derivaite[i, j] = derivaite[j, i] = -signal[j] * signal[i];
 
             return derivaite * signal;
         }

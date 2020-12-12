@@ -147,7 +147,6 @@ namespace Photon.NeuralNetwork.Chista
                 // if nodes are droped out then increase learning factor
                 if (DropoutFactor > 0) LearningFactor /= DropoutFactor;
                 // back-propagation
-                flash.Delta = delta;
                 BackPropagation(flash, delta);
             }
             finally
@@ -202,7 +201,6 @@ namespace Photon.NeuralNetwork.Chista
                     // if nodes are droped out then increase learning factor
                     if (DropoutFactor > 0) LearningFactor /= DropoutFactor;
                     // back-propagation
-                    flash.Delta = delta;
                     BackPropagation(flash, delta);
                 }
             }

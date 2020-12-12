@@ -6,16 +6,17 @@ using Photon.NeuralNetwork.Chista.Implement;
 
 namespace Photon.NeuralNetwork.Chista
 {
-    public class CrossEntropy : IErrorFunction
+    public class CrossEntropyAll : IErrorFunction
     {
         public Vector<double> NegativeErrorDerivative(Vector<double> output, Vector<double> values)
         {
-            return -values / output.PointwiseMaximum(1E-320D);
+            throw new Exception("CrossEntropyAll is not tested.");
+            // return (values - output) / (output.PointwiseMaximum(1E-320D) * (1 - output));
         }
 
         public override string ToString()
         {
-            return $"CrossEntropy";
+            return $"CrossEntropyAll";
         }
     }
 }
