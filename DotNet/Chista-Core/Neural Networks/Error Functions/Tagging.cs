@@ -25,7 +25,7 @@ namespace Photon.NeuralNetwork.Chista
                 else if (output[i] >= MinAccept) error[i] = 1 - output[i] / output.Count;
             return Vector<double>.Build.DenseOfArray(error);
         }
-        public double Accuracy(NeuralNetworkFlash flash)
+        public double Accuracy(NeuralNetworkFlash flash, double[] _)
         {
             // actually 'TotalError' is avrage of errors
             // becaue in 'NegativeErrorDerivative' function output is divided by count

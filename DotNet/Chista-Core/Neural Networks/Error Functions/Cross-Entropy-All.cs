@@ -8,15 +8,16 @@ namespace Photon.NeuralNetwork.Chista
 {
     public class CrossEntropyAll : IErrorFunction
     {
+        private const double MIN = 1E-320D, MAX = 1 - MIN;
+
         public Vector<double> NegativeErrorDerivative(Vector<double> output, Vector<double> values)
         {
-            throw new Exception("CrossEntropyAll is not tested.");
-            // return (values - output) / (output.PointwiseMaximum(1E-320D) * (1 - output));
+            //throw new Exception("CrossEntropyAll is not tested.");
+            return -(values - output) / (output.PointwiseMaximum(MIN) * (1 - output.PointwiseMinimum(MAX)));
         }
-        public double Accuracy(NeuralNetworkFlash flash)
+        public double Accuracy(NeuralNetworkFlash flash, double[] values)
         {
-            var error = Vector<double>.Build.DenseOfArray(flash.Errors);
-            return (error.PointwiseSign() - error).PointwiseAbs().Sum() / error.Count;
+            return values[flash.InputSignals[^1].MaximumIndex()];
         }
 
         public override string ToString()

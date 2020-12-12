@@ -12,7 +12,7 @@ namespace Photon.NeuralNetwork.Chista
             // error equals to: (true_value - network_output)
             return (values - output) / output.Count;
         }
-        public double Accuracy(NeuralNetworkFlash flash)
+        public double Accuracy(NeuralNetworkFlash flash, double[] _)
         {
             // actually 'TotalError' is avrage of errors
             // becaue in 'NegativeErrorDerivative' function output is divided by count

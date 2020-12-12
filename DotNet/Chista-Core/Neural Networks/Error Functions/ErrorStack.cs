@@ -30,7 +30,7 @@ namespace Photon.NeuralNetwork.Chista.Deprecated
         {
             return indexed.PointwiseMultiply(values - output) / values.Count;
         }
-        public double Accuracy(NeuralNetworkFlash flash)
+        public double Accuracy(NeuralNetworkFlash flash, double[] _)
         {
             // actually 'TotalError' is avrage of errors
             // becaue in 'NegativeErrorDerivative' function output is divided by count

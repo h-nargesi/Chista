@@ -137,7 +137,7 @@ namespace Photon.NeuralNetwork.Chista
             // calculate total error of network result
             flash.SetErrors(delta);
             // set accuracy
-            flash.Accuracy = error_fnc.Accuracy(flash);
+            flash.Accuracy = error_fnc.Accuracy(flash, values);
             // check if is not any error then do not train the network
             if (flash.TotalError != 0) return;
 
@@ -226,7 +226,7 @@ namespace Photon.NeuralNetwork.Chista
             // set result
             flash.ResultSignals = signals.ToArray();
             // set accuracy
-            flash.Accuracy = error_fnc.Accuracy(flash);
+            flash.Accuracy = error_fnc.Accuracy(flash, values);
 
             return flash;
         }
@@ -298,7 +298,7 @@ namespace Photon.NeuralNetwork.Chista
             // calculate total error of network result
             flash.SetErrors(delta);
             // set accuracy
-            flash.Accuracy = error_fnc.Accuracy(flash);
+            flash.Accuracy = error_fnc.Accuracy(flash, values);
         }
 
 #if NAN_CHEK
