@@ -19,9 +19,9 @@ namespace Photon.NeuralNetwork.Chista
                     max_index = i;
                     max_value = output[i];
                 }
-            if (max_index > -1) values[max_index] = 1;
+            if (max_index > -1) values[max_index] = -1 / Math.Max(1E-320D, output[max_index]);
 
-            return ((1 - values) / (1 - output)) - (values / output);
+            return values;
         }
 
         public override string ToString()

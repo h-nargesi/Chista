@@ -46,7 +46,7 @@ namespace Photon.NeuralNetwork.Chista.Debug
                 .SetInputSize(2)
                 .AddLayer(FunctionDecoder.Conduction(conduction), layers)
                 .AddLayer(new SoftMax(), 2)
-                .SetCorrection(new CrossEntropyAll())
+                .SetCorrection(new CrossEntropy())
                 .SetDataConvertor(new DataRange(SignalRange, SignalHeight), null)
                 .Image();
 

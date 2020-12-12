@@ -21,8 +21,8 @@ namespace Photon.NeuralNetwork.Chista
         {
             var error = new double[output.Count];
             for (int i = 0; i < output.Count; i++)
-                if (output[i] <= MaxReject) error[i] = output[i];
-                else if (output[i] >= MinAccept) error[i] = 1 - output[i];
+                if (output[i] <= MaxReject) error[i] = output[i] / output.Count;
+                else if (output[i] >= MinAccept) error[i] = 1 - output[i] / output.Count;
             return Vector<double>.Build.DenseOfArray(error);
         }
 
