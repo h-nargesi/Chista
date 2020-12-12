@@ -10,7 +10,7 @@ namespace Photon.NeuralNetwork.Chista
         {
             // TODO: use wight to loose certainty
             // error equals to: (true_value - network_output)
-            return values - output;
+            return (values - output) / output.Count;
         }
 
         public override string ToString()

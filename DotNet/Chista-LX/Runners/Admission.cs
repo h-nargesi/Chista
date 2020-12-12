@@ -45,7 +45,7 @@ namespace Photon.NeuralNetwork.Chista.Debug
             var image = new NeuralNetworkInitializer()
                 .SetInputSize(2)
                 .AddLayer(FunctionDecoder.Conduction(conduction), layers)
-                .AddLayer(new SoftMax(), 1)
+                .AddLayer(new SoftMax(), 2)
                 .SetCorrection(new CrossEntropy())
                 .SetDataConvertor(new DataRange(SignalRange, SignalHeight), null)
                 .Image();
@@ -140,20 +140,20 @@ namespace Photon.NeuralNetwork.Chista.Debug
                     random.NextDouble() * SignalRange * 2 - SignalRange
                 };
 
-                double result;
+                var result = new double[2];
                 if (data[0] < -SignalRange * 0.5 &&
-                    data[1] < -SignalRange * 0.4) result = 1;
+                    data[1] < -SignalRange * 0.4) result[0] = 1;
                 else
                 {
                     var c = Math.Sqrt(
                         Math.Pow(SignalRange - data[0], 2) +
                         Math.Pow(SignalRange - data[1], 2));
 
-                    if (c <= SignalRange) result = 1;
-                    else result = 0;
+                    if (c <= SignalRange) result[0] = 1;
+                    else result[1] = 1;
                 }
 
-                return Task.FromResult(new Record(data, new double[] { result }));
+                return Task.FromResult(new Record(data, result));
             }
 
             public string PrintInfo()
