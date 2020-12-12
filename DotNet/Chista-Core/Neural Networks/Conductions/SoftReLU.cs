@@ -9,6 +9,8 @@ namespace Photon.NeuralNetwork.Chista
         public int ExtraCount => 2;
         public Vector<double> Conduct(Vector<double> signal)
         {
+            // I guess trained chista-model 
+            // return (signal.PointwiseMinimum(700).PointwiseExp() + 1).PointwiseLog();
             return (signal.PointwiseExp() + 1).PointwiseLog();
         }
         public Vector<double> Conduct(NeuralNetworkFlash flash, int layer)
