@@ -12,6 +12,11 @@ namespace Photon.NeuralNetwork.Chista
         {
             return -values / output.PointwiseMaximum(1E-320D);
         }
+        public double Accuracy(NeuralNetworkFlash flash)
+        {
+            var error = Vector<double>.Build.DenseOfArray(flash.Errors);
+            return (error.PointwiseSign() - error).PointwiseAbs().Sum() / error.Count;
+        }
 
         public override string ToString()
         {

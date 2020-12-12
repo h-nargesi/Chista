@@ -23,6 +23,11 @@ namespace Photon.NeuralNetwork.Chista
 
             return values;
         }
+        public double Accuracy(NeuralNetworkFlash flash)
+        {
+            var error = Vector<double>.Build.DenseOfArray(flash.Errors);
+            return (error.PointwiseSign() - error).PointwiseAbs().Sum() / error.Count;
+        }
 
         public override string ToString()
         {

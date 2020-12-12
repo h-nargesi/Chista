@@ -28,7 +28,13 @@ namespace Photon.NeuralNetwork.Chista.Deprecated
 
         public Vector<double> NegativeErrorDerivative(Vector<double> output, Vector<double> values)
         {
-            return indexed.PointwiseMultiply(values - output);
+            return indexed.PointwiseMultiply(values - output) / values.Count;
+        }
+        public double Accuracy(NeuralNetworkFlash flash)
+        {
+            // actually 'TotalError' is avrage of errors
+            // becaue in 'NegativeErrorDerivative' function output is divided by count
+            return 1 - flash.TotalError;
         }
 
         public override string ToString()
